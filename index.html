@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arbeitsblätter Mathematik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Karla:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --paper: #F4F6F5;
+    --paper-raised: #FFFFFF;
+    --ink: #1B2430;
+    --ink-soft: #566072;
+    --line: #D7DEDC;
+    --accent: #3D5A80;
+    --accent-soft: #E7ECF3;
+    --shadow: 0 1px 2px rgba(27,36,48,0.07), 0 6px 18px rgba(27,36,48,0.07);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #12181F; --paper-raised: #1B232C; --ink: #E7ECEF; --ink-soft: #A7B2BD;
+      --line: #2B3542; --accent: #8FADD6; --accent-soft: #243347;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: "Karla", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; }
+  h1, h2 { font-family: "Outfit", ui-sans-serif, system-ui, sans-serif; margin: 0; }
+  .head {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    margin-bottom: 24px;
+  }
+  .eyebrow {
+    font-family: "Outfit", sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .head h1 { font-size: 1.7rem; }
+  .head p { color: var(--ink-soft); margin: 8px 0 0; font-size: 0.95rem; }
+
+  .jahrgang {
+    font-family: "Outfit", sans-serif;
+    font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-soft);
+    margin: 26px 0 10px;
+  }
+  .blatt {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .blatt:hover, .blatt:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
+  .blatt .ic {
+    flex: none; width: 46px; height: 46px; border-radius: 12px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 1.35rem;
+  }
+  .blatt .txt { flex: 1 1 auto; min-width: 0; }
+  .blatt .titel { display: block; font-family: "Outfit", sans-serif; font-weight: 600; font-size: 1.02rem; }
+  .blatt .sub { display: block; color: var(--ink-soft); font-size: 0.86rem; margin-top: 2px; }
+  .blatt .pfeil { flex: none; color: var(--ink-soft); font-size: 1.2rem; }
+
+  footer {
+    margin-top: 34px; padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft); font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <div class="eyebrow">Mathematik · Gymnasium</div>
+    <h1>Arbeitsblätter</h1>
+    <p>Tippe auf ein Blatt, um es zu öffnen. Die Blätter funktionieren direkt im Browser –
+       du kannst deine Antworten eintragen und selbst überprüfen.</p>
+  </div>
+
+  <!-- Neue Blätter einfach als weiteren <a class="blatt"> eintragen. -->
+
+  <div class="jahrgang">Jahrgangsstufe 10</div>
+
+  <a class="blatt" href="jgst10-wiederholung.html">
+    <span class="ic" aria-hidden="true">∑</span>
+    <span class="txt">
+      <span class="titel">Fit für die 10. Klasse?</span>
+      <span class="sub">Wiederholung aus Jahrgangsstufe 9 · 8 Aufgaben + Knobelaufgabe</span>
+    </span>
+    <span class="pfeil" aria-hidden="true">›</span>
+  </a>
+
+  <footer>
+    Die Blätter speichern nichts und senden nichts. Deine Eingaben bleiben auf deinem Gerät.
+  </footer>
+</main>
+</body>
+</html>
