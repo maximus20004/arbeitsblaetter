@@ -679,6 +679,9 @@ body.exporting:not(.wb-solution) .hint-area { display: none !important; }
   flex: 1 1 auto;
   border-top: 2px dashed var(--line);
 }
+/* Im Schülerblatt bleibt die Zeile als Marke für die Seitenaufteilung stehen,
+   ist aber leer – dann darf sie auch keinen Abstand erzeugen. */
+.wb-row.wb-break-only { margin: 0; gap: 0; }
 
 /* ---------- Rückmeldung pro Lücke ----------
    Nach „Prüfen" ist an jedem Feld einzeln sichtbar, ob es stimmt – bei
@@ -2471,7 +2474,11 @@ select.choice.field-bad {
       label: "Seitenumbruch", icon: "✂️", group: "struktur",
       noCard: true, forceBreak: true,
       defaultConfig: function () { return {}; },
-      render: function () {
+      // Nur im Baukasten und in der Live-Vorschau sichtbar. Im exportierten
+      // Schülerblatt bliebe sonst eine gestrichelte Hilfslinie stehen, die
+      // für die Klasse nichts bedeutet.
+      render: function (c, uid, ctx) {
+        if (!(ctx && ctx.preview)) return "";
         return '<div class="wb-forced-break no-print"><span>✂ Seitenumbruch – hier beginnt im PDF eine neue Seite</span></div>';
       },
       editor: function () {
@@ -3400,14 +3407,20 @@ select.choice.field-bad {
       var rowForceBreak = row.length === 1 && !!row[0].def.forceBreak;
       var cellsHtml = row.map(function (item) {
         var b = item.b, def = item.def;
-        var ctx = { solution: solution };
+        var ctx = { solution: solution, preview: !!project.previewMode };
         if ((b.type === "task" || b.type === "sortTask") && !b.config.knobel) { taskNumber++; ctx.taskNumber = taskNumber; }
         var inner = def.render(b.config, b.id, ctx);
         var cls = "wb-block" + (def.noCard ? "" : " card");
         var gridCol = def.noCard ? ("1 / span 4") : ((item.col + 1) + " / span " + item.span);
         return '<div class="' + cls + '" data-block-id="' + b.id + '" style="grid-column: ' + gridCol + ';">' + inner + "</div>";
       }).join("");
-      return '<div class="wb-row" data-keep-with-next="' + rowKeepWithNext + '"' +
+      // Eine Zeile, die nur den (im Schülerblatt unsichtbaren) Umbruch-
+      // Baustein enthält, darf dort auch keinen Abstand hinterlassen. Die
+      // Zeile selbst bleibt stehen, weil die Seitenaufteilung beim PDF-Export
+      // ihr data-force-break liest.
+      var leerBreak = rowForceBreak && !project.previewMode;
+      return '<div class="wb-row' + (leerBreak ? " wb-break-only" : "") +
+        '" data-keep-with-next="' + rowKeepWithNext + '"' +
         (rowForceBreak ? ' data-force-break="true"' : "") + ">" + cellsHtml + "</div>";
     }).join("\n");
     return (
@@ -3467,10 +3480,13 @@ select.choice.field-bad {
     // Seitenumbruch-Indikator: zeigt in der Live-Vorschau gestrichelte
     // Linien dort, wo der PDF-Export vermutlich eine neue Seite beginnen
     // würde. Rein informativ, wird bei jedem Redraw (Resize, Panel-Toggle)
-    // neu berechnet.
-    function updatePageBreaks() { E.renderPageBreakOverlays("wbWorksheet"); }
-    E.redrawCallbacks.push(updatePageBreaks);
-    updatePageBreaks();
+    // neu berechnet – und bewusst NUR im Baukasten: im Schülerblatt wäre die
+    // Linie mit ihrem „✂ Seite 2“-Schild nur Verwirrung.
+    if (project.previewMode) {
+      var updatePageBreaks = function () { E.renderPageBreakOverlays("wbWorksheet"); };
+      E.redrawCallbacks.push(updatePageBreaks);
+      updatePageBreaks();
+    }
 
     // Zuletzt: Eingaben wiederherstellen und ab jetzt mitschreiben. Muss nach
     // dem Mounten aller Bausteine laufen, damit Felder und Zeichenflächen da sind.
