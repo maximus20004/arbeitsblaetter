@@ -683,6 +683,25 @@ body.exporting:not(.wb-solution) .hint-area { display: none !important; }
    ist aber leer – dann darf sie auch keinen Abstand erzeugen. */
 .wb-row.wb-break-only { margin: 0; gap: 0; }
 
+/* ---------- Rechenweg: Schreibfläche unter der Aufgabe ----------
+   Soll nie vom Seitenumbruch zerschnitten werden – halbe Rechnungen auf zwei
+   Seiten sind beim Korrigieren wertlos. */
+.calc-area {
+  margin-top: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.calc-label {
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.calc-area .drawpad-wrap { margin-top: 0; }
+
 /* ---------- Rückmeldung pro Lücke ----------
    Nach „Prüfen" ist an jedem Feld einzeln sichtbar, ob es stimmt – bei
    Aufgaben mit mehreren Lücken war vorher nur eine Gesamtmeldung zu sehen. */
@@ -2247,6 +2266,25 @@ select.choice.field-bad {
       (empty ? '<span class="empty">' + empty + "</span>" : "") + "</span>";
   }
 
+  // Schreibfläche für den Rechenweg unter einer Aufgabe. Bewusst überall
+  // dasselbe Markup (Aufgabe und Sortier-Aufgabe), damit Höhe, Abstände und
+  // Seitenumbruch-Verhalten identisch sind. Die Beschriftung wird mitgedruckt:
+  // auf Papier soll erkennbar sein, wofür der Kasten da ist.
+  var CALC_HEIGHT = 300;
+
+  function calcAreaHtml(uid, hoehe) {
+    return '<div class="calc-area">' +
+      '<div class="calc-label">Rechenweg</div>' +
+      '<div class="drawpad-wrap"><div class="drawpad-toolbar no-print"></div>' +
+      '<canvas class="drawpad-canvas" id="wb-' + uid + '-pad" style="height:' +
+      (Number(hoehe) || CALC_HEIGHT) + 'px;"></canvas></div></div>';
+  }
+
+  function mountCalcArea(uid) {
+    var canvas = E.el("wb-" + uid + "-pad");
+    if (canvas) E.wireDrawpad(canvas.closest(".drawpad-wrap"));
+  }
+
   function uniqueId(prefix) {
     return prefix + "_" + Math.random().toString(36).slice(2, 9);
   }
@@ -2966,7 +3004,9 @@ select.choice.field-bad {
         return {
           prompt: "Neue Aufgabe formulieren.",
           stars: 1, knobel: false,
-          drawpad: false,
+          // Schreibfläche standardmäßig an: Schüler sollen ihren Rechenweg
+          // direkt auf dem Blatt festhalten können, nicht nur das Ergebnis.
+          drawpad: true, drawpadHeight: CALC_HEIGHT,
           template: "", fields: [], hints: [],
           solution: ""
         };
@@ -2981,9 +3021,8 @@ select.choice.field-bad {
         // erwarteten Werte stehen direkt im Text, Tipps und Musterlösung sind
         // von Anfang an aufgeklappt.
         if (ctx && ctx.solution) {
-          if (c.drawpad) {
-            out += '<div class="drawpad-wrap"><div class="drawpad-toolbar no-print"></div><canvas class="drawpad-canvas" id="wb-' + uid + '-pad" style="height:' + (c.drawpadHeight || 220) + 'px;"></canvas></div>';
-          }
+          // Auf dem Lösungsblatt keine leere Schreibfläche: sie würde die
+          // Lehrerfassung nur aufblähen, ohne etwas zu zeigen.
           if (c.fields && c.fields.length && c.template) {
             out += '<div class="answer-row"><div class="answer-template">' +
               E.renderTemplateSolution(c.template, c.fields) + "</div></div>";
@@ -2998,9 +3037,9 @@ select.choice.field-bad {
           return out;
         }
 
-        if (c.drawpad) {
-          out += '<div class="drawpad-wrap"><div class="drawpad-toolbar no-print"></div><canvas class="drawpad-canvas" id="wb-' + uid + '-pad" style="height:' + (c.drawpadHeight || 220) + 'px;"></canvas></div>';
-        }
+        // Fehlender Wert = an: ältere Blätter haben die Einstellung explizit,
+        // neue Aufgaben sollen die Fläche ohne Zutun bekommen.
+        if (c.drawpad !== false) out += calcAreaHtml(uid, c.drawpadHeight);
         if (c.fields && c.fields.length) {
           // Vorlage in einem eigenen Block-Container: .answer-row ist ein
           // Flex-Container, in dem jeder Textschnipsel und jedes <br> zu einem
@@ -3022,10 +3061,7 @@ select.choice.field-bad {
         return out;
       },
       mount: function (c, uid) {
-        if (c.drawpad) {
-          var canvas = E.el("wb-" + uid + "-pad");
-          if (canvas) E.wireDrawpad(canvas.closest(".drawpad-wrap"));
-        }
+        if (c.drawpad !== false) mountCalcArea(uid);
         if (c.fields && c.fields.length) {
           var checkBtn = document.querySelector('[data-wb-check="' + uid + '"]');
           if (checkBtn) checkBtn.addEventListener("click", function () { E.checkFieldsTask(uid, c.fields); });
@@ -3046,11 +3082,11 @@ select.choice.field-bad {
         var row = document.createElement("div"); row.className = "ed-row-grid";
         row.appendChild(selectInput(String(c.stars), [{ value: "1", label: "★☆☆ leicht" }, { value: "2", label: "★★☆ mittel" }, { value: "3", label: "★★★ schwer" }], function (v) { api.update({ stars: Number(v) }); }));
         row.appendChild(checkboxInput(c.knobel, function (v) { api.update({ knobel: v }); }, "Knobelaufgabe (★ statt Nummer)"));
-        row.appendChild(checkboxInput(c.drawpad, function (v) { api.update({ drawpad: v }); api.refresh(); }, "Rechenfläche anzeigen"));
+        row.appendChild(checkboxInput(c.drawpad !== false, function (v) { api.update({ drawpad: v }); api.refresh(); }, "Rechenweg: Schreibfläche anzeigen"));
         d.appendChild(field("Einstellungen", row));
-        if (c.drawpad) {
-          d.appendChild(field("Höhe der Rechenfläche in px (mehr Platz zum Rechnen)",
-            numberInput(c.drawpadHeight || 220, function (v) { api.update({ drawpadHeight: v || 220 }); }, { step: 20, min: 100 })));
+        if (c.drawpad !== false) {
+          d.appendChild(field("Höhe der Schreibfläche in px (300 ≈ ein Viertel Seite, 460 ≈ ein Drittel)",
+            numberInput(c.drawpadHeight || CALC_HEIGHT, function (v) { api.update({ drawpadHeight: v || CALC_HEIGHT }); }, { step: 20, min: 100 })));
         }
 
         // Vorlage + „Lücke einfügen“: der Knopf setzt den Platzhalter an der
@@ -3164,6 +3200,7 @@ select.choice.field-bad {
         return {
           prompt: "Bringe die Elemente in die richtige Reihenfolge.",
           stars: 1, knobel: false,
+          drawpad: true, drawpadHeight: CALC_HEIGHT,
           items: ["Erster Schritt", "Zweiter Schritt", "Dritter Schritt", "Vierter Schritt"]
         };
       },
@@ -3197,11 +3234,13 @@ select.choice.field-bad {
         return head +
           '<div class="sort-list" id="wb-' + uid + '-sort">' + itemsHtml + "</div>" +
           '<div class="answer-row no-print"><button class="btn btn-sm no-print" data-wb-sortcheck="' + uid + '" type="button">Prüfen</button></div>' +
-          '<div class="feedback" id="wb-' + uid + '-fb"></div>';
+          '<div class="feedback" id="wb-' + uid + '-fb"></div>' +
+          (c.drawpad !== false ? calcAreaHtml(uid, c.drawpadHeight) : "");
       },
       mount: function (c, uid) {
         var container = E.el("wb-" + uid + "-sort");
         E.wireSortList(container);
+        if (c.drawpad !== false) mountCalcArea(uid);
         var checkBtn = document.querySelector('[data-wb-sortcheck="' + uid + '"]');
         if (checkBtn) checkBtn.addEventListener("click", function () { E.checkSortTask(uid); });
       },
@@ -3212,7 +3251,12 @@ select.choice.field-bad {
         var row = document.createElement("div"); row.className = "ed-row-grid";
         row.appendChild(selectInput(String(c.stars), [{ value: "1", label: "★☆☆ leicht" }, { value: "2", label: "★★☆ mittel" }, { value: "3", label: "★★★ schwer" }], function (v) { api.update({ stars: Number(v) }); }));
         row.appendChild(checkboxInput(c.knobel, function (v) { api.update({ knobel: v }); }, "Knobelaufgabe (★ statt Nummer)"));
+        row.appendChild(checkboxInput(c.drawpad !== false, function (v) { api.update({ drawpad: v }); api.refresh(); }, "Rechenweg: Schreibfläche anzeigen"));
         d.appendChild(field("Einstellungen", row));
+        if (c.drawpad !== false) {
+          d.appendChild(field("Höhe der Schreibfläche in px",
+            numberInput(c.drawpadHeight || CALC_HEIGHT, function (v) { api.update({ drawpadHeight: v || CALC_HEIGHT }); }, { step: 20, min: 100 })));
+        }
 
         var itemsWrap = document.createElement("div");
         itemsWrap.appendChild(document.createTextNode("Elemente in der KORREKTEN Reihenfolge (wird den Schülern gemischt angezeigt):"));
@@ -3499,7 +3543,7 @@ select.choice.field-bad {
 })(window);
 </script>
 <script>
-window.WB_PROJECT = {"meta":{"chapterCode":"0","chapterTitle":"Wiederholung Jahrgangsstufe 9","title":"Fit für die 10. Klasse?","subtitle":"Mathematik · Jahrgangsstufe 10 · Selbstkontrolle","klasse":"10","datum":"","filename":"jgst10_wiederholung","slim":true},"blocks":[{"id":"b2","type":"phaseHeading","config":{"tag":"Baustein 1","title":"Reelle Zahlen, Potenzen und Gleichungen"},"span":4,"col":0,"row":0},{"id":"b3","type":"task","config":{"prompt":"Berechne die Terme im Kopf. Gib bei der letzten Aufgabe nur den Exponenten an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">√144 =\u003c/span> {{a}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">√8 · √2 =\u003c/span> {{b}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">2\u003csup>−3\u003c/sup> =\u003c/span> {{c}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">(5²)³ = 5\u003c/span>\u003csup>{{d}}\u003c/sup>","fields":[{"id":"a","type":"number","unit":"","expected":12,"options":[]},{"id":"b","type":"number","unit":"","expected":4,"options":[]},{"id":"c","type":"number","unit":"","expected":"0.125; 1/8; 1:8","options":[]},{"id":"d","type":"number","unit":"","expected":6,"options":[]}],"hints":["√8 · √2 = √(8 · 2). Was steht dann unter der Wurzel?","Eine Potenz wird potenziert, indem man die Exponenten multipliziert.","2⁻³ = 1 : 2³ = 1 : 8."],"solution":""},"span":4,"col":0,"row":1},{"id":"b4","type":"task","config":{"prompt":"Löse die quadratische Gleichung x² − 6x + 8 = 0. Gib die kleinere Lösung zuerst an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">x₁ =\u003c/span> {{x1}} &nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{x2}}","fields":[{"id":"x1","type":"number","unit":"","expected":2,"options":[]},{"id":"x2","type":"number","unit":"","expected":4,"options":[]}],"hints":["Setze a = 1, b = −6, c = 8 in die Lösungsformel ein.","Unter der Wurzel steht b² − 4ac = 36 − 32 = 4."],"solution":""},"span":4,"col":0,"row":2},{"id":"b5","type":"sortTask","config":{"prompt":"Bringe die Schritte der quadratischen Ergänzung für x² + 6x + 5 = 0 in die richtige Reihenfolge.","stars":2,"knobel":false,"items":["x² + 6x = −5","x² + 6x + 9 = −5 + 9","(x + 3)² = 4","x + 3 = 2  oder  x + 3 = −2","x₁ = −1  und  x₂ = −5"]},"span":4,"col":0,"row":3},{"id":"b6","type":"phaseHeading","config":{"tag":"Baustein 2","title":"Quadratische Funktionen und Potenzfunktionen"},"span":4,"col":0,"row":4},{"id":"b7","type":"task","config":{"prompt":"Gegeben ist f(x) = (x − 3)² − 4. Gib den Scheitelpunkt, die beiden Nullstellen und den y-Achsenabschnitt an. Entscheide außerdem, welche Symmetrie der Graph von g(x) = x⁴ besitzt.","stars":2,"knobel":false,"drawpad":false,"template":"Scheitel: \u003cspan class=\"formula\">S(\u003c/span> {{sx}} \u003cspan class=\"formula\">|\u003c/span> {{sy}} \u003cspan class=\"formula\">)\u003c/span>\u003cbr>Nullstellen: \u003cspan class=\"formula\">x₁ =\u003c/span> {{n1}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{n2}}\u003cbr>y-Achsenabschnitt: \u003cspan class=\"formula\">f(0) =\u003c/span> {{y0}}\u003cbr>Der Graph von \u003cspan class=\"formula\">g(x) = x⁴\u003c/span> ist {{sym}}","fields":[{"id":"sx","type":"number","unit":"","expected":3,"options":[]},{"id":"sy","type":"number","unit":"","expected":-4,"options":[]},{"id":"n1","type":"number","unit":"","expected":1,"options":[]},{"id":"n2","type":"number","unit":"","expected":5,"options":[]},{"id":"y0","type":"number","unit":"","expected":5,"options":[]},{"id":"sym","type":"choice","expected":"achsen","unit":"","options":[{"value":"achsen","label":"achsensymmetrisch zur y-Achse"},{"value":"punkt","label":"punktsymmetrisch zum Ursprung"},{"value":"keine","label":"weder noch"}]}],"hints":["Die Scheitelform lautet f(x) = (x − d)² + e mit dem Scheitel S(d | e). Achte auf das Vorzeichen von d.","Für die Nullstellen setzt du (x − 3)² − 4 = 0, also (x − 3)² = 4.","Potenzfunktionen mit geradem Exponenten sind achsensymmetrisch, mit ungeradem punktsymmetrisch."],"solution":""},"span":4,"col":0,"row":5},{"id":"b10","type":"phaseHeading","config":{"tag":"Baustein 3","title":"Pythagoras, Ähnlichkeit und Trigonometrie"},"span":4,"col":0,"row":6},{"id":"b11","type":"task","config":{"prompt":"Ein Karton hat die Kantenlängen a = 12 cm, b = 9 cm und c = 20 cm. Berechne zuerst die Diagonale d der Grundfläche, dann die Raumdiagonale e. Beide Ergebnisse sind ganzzahlig.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">d =\u003c/span> {{d}} \u003cspan class=\"formula\">cm\u003c/span> &nbsp;&nbsp; \u003cspan class=\"formula\">e =\u003c/span> {{e}} \u003cspan class=\"formula\">cm\u003c/span>","fields":[{"id":"d","type":"number","unit":"","expected":15,"options":[]},{"id":"e","type":"number","unit":"","expected":25,"options":[]}],"hints":["Die Grundfläche ist ein Rechteck mit den Seiten 12 cm und 9 cm.","Für die Raumdiagonale bildest du ein rechtwinkliges Dreieck aus d, c und e."],"solution":""},"span":4,"col":0,"row":7},{"id":"b12","type":"task","config":{"prompt":"Ein senkrecht stehender Stab von 1,5 m Höhe wirft einen 2 m langen Schatten. Zur gleichen Zeit wirft ein Baum einen 14 m langen Schatten. Berechne die Höhe des Baums.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">h =\u003c/span> {{h}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"h","type":"number","unit":"","expected":10.5,"options":[]}],"hints":["Stab und Baum bilden mit ihren Schatten zwei ähnliche Dreiecke.","Es gilt h : 14 = 1,5 : 2."],"solution":""},"span":4,"col":0,"row":8},{"id":"b13","type":"task","config":{"prompt":"Eine 8 m lange Leiter lehnt an einer Hauswand und reicht dort 4 m hoch. Berechne den Neigungswinkel α der Leiter gegen den Boden und den Abstand des Leiterfußes von der Wand (auf eine Dezimale gerundet).","stars":3,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">α =\u003c/span> {{alpha}} \u003cspan class=\"formula\">°\u003c/span> &nbsp;&nbsp; Abstand \u003cspan class=\"formula\">=\u003c/span> {{x}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"alpha","type":"number","unit":"","expected":30,"options":[]},{"id":"x","type":"number","unit":"","expected":6.9,"options":[]}],"hints":["Die Leiter ist die Hypotenuse, die Höhe an der Wand die Gegenkathete von α.","sin α = 4 : 8 = 0,5. Welcher Winkel hat den Sinus 0,5?","Den Abstand bekommst du mit dem Satz des Pythagoras oder über cos α."],"solution":""},"span":4,"col":0,"row":9},{"id":"b17","type":"phaseHeading","config":{"tag":"Zum Knobeln","title":"Eine Brücke in die 10. Klasse"},"span":4,"col":0,"row":10},{"id":"b18","type":"task","config":{"prompt":"Zeige mithilfe des Satzes von Pythagoras am Einheitskreis, dass für jeden Winkel α gilt: sin²α + cos²α = 1. Fertige zuerst eine beschriftete Skizze an und begründe dann in zwei bis drei Sätzen.","stars":3,"knobel":true,"drawpad":true,"template":"","fields":[],"hints":[],"solution":""},"span":4,"col":0,"row":11}],"solutionMode":false,"previewMode":false};
+window.WB_PROJECT = {"meta":{"chapterCode":"0","chapterTitle":"Wiederholung Jahrgangsstufe 9","title":"Fit für die 10. Klasse?","subtitle":"Mathematik · Jahrgangsstufe 10 · Selbstkontrolle","klasse":"10","datum":"","filename":"jgst10_wiederholung","slim":true},"blocks":[{"id":"b2","type":"phaseHeading","config":{"tag":"Baustein 1","title":"Reelle Zahlen, Potenzen und Gleichungen"},"span":4,"col":0,"row":0},{"id":"b3","type":"task","config":{"prompt":"Berechne die Terme im Kopf. Gib bei der letzten Aufgabe nur den Exponenten an.","stars":1,"knobel":false,"drawpad":true,"template":"\u003cspan class=\"formula\">√144 =\u003c/span> {{a}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">√8 · √2 =\u003c/span> {{b}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">2\u003csup>−3\u003c/sup> =\u003c/span> {{c}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">(5²)³ = 5\u003c/span>\u003csup>{{d}}\u003c/sup>","fields":[{"id":"a","type":"number","unit":"","expected":12,"options":[]},{"id":"b","type":"number","unit":"","expected":4,"options":[]},{"id":"c","type":"number","unit":"","expected":"0.125; 1/8; 1:8","options":[]},{"id":"d","type":"number","unit":"","expected":6,"options":[]}],"hints":["√8 · √2 = √(8 · 2). Was steht dann unter der Wurzel?","Eine Potenz wird potenziert, indem man die Exponenten multipliziert.","2⁻³ = 1 : 2³ = 1 : 8."],"solution":"","drawpadHeight":260},"span":4,"col":0,"row":1},{"id":"b4","type":"task","config":{"prompt":"Löse die quadratische Gleichung x² − 6x + 8 = 0. Gib die kleinere Lösung zuerst an.","stars":1,"knobel":false,"drawpad":true,"template":"\u003cspan class=\"formula\">x₁ =\u003c/span> {{x1}} &nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{x2}}","fields":[{"id":"x1","type":"number","unit":"","expected":2,"options":[]},{"id":"x2","type":"number","unit":"","expected":4,"options":[]}],"hints":["Setze a = 1, b = −6, c = 8 in die Lösungsformel ein.","Unter der Wurzel steht b² − 4ac = 36 − 32 = 4."],"solution":"","drawpadHeight":360},"span":4,"col":0,"row":2},{"id":"b5","type":"sortTask","config":{"prompt":"Bringe die Schritte der quadratischen Ergänzung für x² + 6x + 5 = 0 in die richtige Reihenfolge.","stars":2,"knobel":false,"items":["x² + 6x = −5","x² + 6x + 9 = −5 + 9","(x + 3)² = 4","x + 3 = 2  oder  x + 3 = −2","x₁ = −1  und  x₂ = −5"],"drawpad":true,"drawpadHeight":260},"span":4,"col":0,"row":3},{"id":"b6","type":"phaseHeading","config":{"tag":"Baustein 2","title":"Quadratische Funktionen und Potenzfunktionen"},"span":4,"col":0,"row":4},{"id":"b7","type":"task","config":{"prompt":"Gegeben ist f(x) = (x − 3)² − 4. Gib den Scheitelpunkt, die beiden Nullstellen und den y-Achsenabschnitt an. Entscheide außerdem, welche Symmetrie der Graph von g(x) = x⁴ besitzt.","stars":2,"knobel":false,"drawpad":true,"template":"Scheitel: \u003cspan class=\"formula\">S(\u003c/span> {{sx}} \u003cspan class=\"formula\">|\u003c/span> {{sy}} \u003cspan class=\"formula\">)\u003c/span>\u003cbr>Nullstellen: \u003cspan class=\"formula\">x₁ =\u003c/span> {{n1}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{n2}}\u003cbr>y-Achsenabschnitt: \u003cspan class=\"formula\">f(0) =\u003c/span> {{y0}}\u003cbr>Der Graph von \u003cspan class=\"formula\">g(x) = x⁴\u003c/span> ist {{sym}}","fields":[{"id":"sx","type":"number","unit":"","expected":3,"options":[]},{"id":"sy","type":"number","unit":"","expected":-4,"options":[]},{"id":"n1","type":"number","unit":"","expected":1,"options":[]},{"id":"n2","type":"number","unit":"","expected":5,"options":[]},{"id":"y0","type":"number","unit":"","expected":5,"options":[]},{"id":"sym","type":"choice","expected":"achsen","unit":"","options":[{"value":"achsen","label":"achsensymmetrisch zur y-Achse"},{"value":"punkt","label":"punktsymmetrisch zum Ursprung"},{"value":"keine","label":"weder noch"}]}],"hints":["Die Scheitelform lautet f(x) = (x − d)² + e mit dem Scheitel S(d | e). Achte auf das Vorzeichen von d.","Für die Nullstellen setzt du (x − 3)² − 4 = 0, also (x − 3)² = 4.","Potenzfunktionen mit geradem Exponenten sind achsensymmetrisch, mit ungeradem punktsymmetrisch."],"solution":"","drawpadHeight":400},"span":4,"col":0,"row":5},{"id":"b10","type":"phaseHeading","config":{"tag":"Baustein 3","title":"Pythagoras, Ähnlichkeit und Trigonometrie"},"span":4,"col":0,"row":6},{"id":"b11","type":"task","config":{"prompt":"Ein Karton hat die Kantenlängen a = 12 cm, b = 9 cm und c = 20 cm. Berechne zuerst die Diagonale d der Grundfläche, dann die Raumdiagonale e. Beide Ergebnisse sind ganzzahlig.","stars":2,"knobel":false,"drawpad":true,"template":"\u003cspan class=\"formula\">d =\u003c/span> {{d}} \u003cspan class=\"formula\">cm\u003c/span> &nbsp;&nbsp; \u003cspan class=\"formula\">e =\u003c/span> {{e}} \u003cspan class=\"formula\">cm\u003c/span>","fields":[{"id":"d","type":"number","unit":"","expected":15,"options":[]},{"id":"e","type":"number","unit":"","expected":25,"options":[]}],"hints":["Die Grundfläche ist ein Rechteck mit den Seiten 12 cm und 9 cm.","Für die Raumdiagonale bildest du ein rechtwinkliges Dreieck aus d, c und e."],"solution":"","drawpadHeight":360},"span":4,"col":0,"row":7},{"id":"b12","type":"task","config":{"prompt":"Ein senkrecht stehender Stab von 1,5 m Höhe wirft einen 2 m langen Schatten. Zur gleichen Zeit wirft ein Baum einen 14 m langen Schatten. Berechne die Höhe des Baums.","stars":2,"knobel":false,"drawpad":true,"template":"\u003cspan class=\"formula\">h =\u003c/span> {{h}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"h","type":"number","unit":"","expected":10.5,"options":[]}],"hints":["Stab und Baum bilden mit ihren Schatten zwei ähnliche Dreiecke.","Es gilt h : 14 = 1,5 : 2."],"solution":"","drawpadHeight":300},"span":4,"col":0,"row":8},{"id":"b13","type":"task","config":{"prompt":"Eine 8 m lange Leiter lehnt an einer Hauswand und reicht dort 4 m hoch. Berechne den Neigungswinkel α der Leiter gegen den Boden und den Abstand des Leiterfußes von der Wand (auf eine Dezimale gerundet).","stars":3,"knobel":false,"drawpad":true,"template":"\u003cspan class=\"formula\">α =\u003c/span> {{alpha}} \u003cspan class=\"formula\">°\u003c/span> &nbsp;&nbsp; Abstand \u003cspan class=\"formula\">=\u003c/span> {{x}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"alpha","type":"number","unit":"","expected":30,"options":[]},{"id":"x","type":"number","unit":"","expected":6.9,"options":[]}],"hints":["Die Leiter ist die Hypotenuse, die Höhe an der Wand die Gegenkathete von α.","sin α = 4 : 8 = 0,5. Welcher Winkel hat den Sinus 0,5?","Den Abstand bekommst du mit dem Satz des Pythagoras oder über cos α."],"solution":"","drawpadHeight":360},"span":4,"col":0,"row":9},{"id":"b17","type":"phaseHeading","config":{"tag":"Zum Knobeln","title":"Eine Brücke in die 10. Klasse"},"span":4,"col":0,"row":10},{"id":"b18","type":"task","config":{"prompt":"Zeige mithilfe des Satzes von Pythagoras am Einheitskreis, dass für jeden Winkel α gilt: sin²α + cos²α = 1. Fertige zuerst eine beschriftete Skizze an und begründe dann in zwei bis drei Sätzen.","stars":3,"knobel":true,"drawpad":true,"template":"","fields":[],"hints":[],"solution":"","drawpadHeight":460},"span":4,"col":0,"row":11}],"solutionMode":false,"previewMode":false};
 document.getElementById("wbRoot").outerHTML = window.WBRuntime.renderBody(window.WB_PROJECT);
 window.WBRuntime.mount(window.WB_PROJECT);
 </script>
