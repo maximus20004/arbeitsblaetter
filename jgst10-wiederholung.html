@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>0 Wiederholung Jahrgangsstufe 9</title>
+<title>0 Wiederholung Jahrgangsstufe 9 – Lösungen</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Karla:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap">
@@ -759,6 +759,31 @@ select.choice.field-bad {
   bottom: 12px;
 }
 .scratch-panel.big .drawpad-canvas { height: min(62vh, 620px); }
+
+/* ---------- Hinweis nach dem Wiederherstellen von Eingaben ---------- */
+.restore-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--accent-primary-soft);
+  border: 1px solid var(--accent-primary);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+}
+.restore-bar span { flex: 1 1 auto; }
+.linklike {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -917,13 +942,25 @@ select.choice.field-bad {
 
     requestAnimationFrame(resize);
 
+    var onChange = null;
+    function changed() { if (onChange) { try { onChange(); } catch (e) {} } }
+    canvas.addEventListener("pointerup", changed);
+    canvas.addEventListener("pointercancel", changed);
+
     return {
       setColor: function (c) { color = c; },
       setWidth: function (w) { lineWidth = w; },
-      undo: function () { strokes.pop(); redraw(); },
-      clear: function () { strokes = []; redraw(); },
+      undo: function () { strokes.pop(); redraw(); changed(); },
+      clear: function () { strokes = []; redraw(); changed(); },
       isEmpty: function () { return strokes.length === 0; },
-      resize: resize
+      resize: resize,
+      // Für das Zwischenspeichern: Striche auslesen und wieder einsetzen.
+      getStrokes: function () { return strokes; },
+      setStrokes: function (arr) {
+        strokes = Array.isArray(arr) ? arr : [];
+        redraw();
+      },
+      setOnChange: function (fn) { onChange = fn; }
     };
   }
 
@@ -962,6 +999,12 @@ select.choice.field-bad {
     toolbar.appendChild(mkToolBtn("↺ Rückgängig", "Letzten Strich entfernen", function () { pad.undo(); }));
     toolbar.appendChild(mkToolBtn("🗑 Löschen", "Alles löschen", function () { pad.clear(); }));
     redrawCallbacks.push(pad.resize);
+    // Für das Zwischenspeichern merken, welche Zeichenfläche zu welchem
+    // Canvas gehört – die Striche werden nach einem Neuladen wiederhergestellt.
+    if (canvas.id) {
+      padRegistry[canvas.id] = pad;
+      pad.setOnChange(scheduleSave);
+    }
     return pad;
   }
 
@@ -1528,6 +1571,139 @@ select.choice.field-bad {
    * registry.js sortTask). Prüfen liest einfach die aktuelle DOM-Reihenfolge
    * aus – funktioniert unabhängig davon, wie oft/wie umsortiert wurde, und
    * genau das erscheint auch in einem PDF-Export (Momentaufnahme). */
+  /* ---------- Eingaben auf dem Gerät zwischenspeichern ----------
+   * Ein versehentliches Neuladen – auf dem Tablet schnell passiert – hat
+   * bisher alles gelöscht. Eingaben, Sortierreihenfolge und Zeichnungen
+   * liegen jetzt im localStorage DES GERÄTS. Nichts wird gesendet, nichts
+   * verlässt das Tablet, es gibt keinerlei Auswertung.
+   * Bewusst NICHT gespeichert: die Prüf-Rückmeldungen – nach dem Neuladen
+   * soll man selbst noch einmal auf „Prüfen" tippen. */
+  var padRegistry = {};
+  var autosaveKey = null;
+  var autosaveTimer = null;
+
+  function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function storeDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function collectState(mitZeichnungen) {
+    var s = { v: 1, fields: {}, sort: {}, pads: {} };
+    Array.prototype.forEach.call(document.querySelectorAll(".field-input, select.choice"), function (e) {
+      if (e.id && String(e.value) !== "") s.fields[e.id] = e.value;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".sort-list[id]"), function (c) {
+      s.sort[c.id] = Array.prototype.map.call(c.querySelectorAll(".sort-item"), function (it) {
+        return it.dataset.key;
+      });
+    });
+    if (mitZeichnungen !== false) {
+      Object.keys(padRegistry).forEach(function (id) {
+        var st = padRegistry[id].getStrokes();
+        if (st && st.length) s.pads[id] = st;
+      });
+    }
+    return s;
+  }
+
+  function applyState(s) {
+    if (!s || s.v !== 1) return false;
+    var etwas = false;
+    Object.keys(s.fields || {}).forEach(function (id) {
+      var e = el(id);
+      if (e) { e.value = s.fields[id]; etwas = true; }
+    });
+    Object.keys(s.sort || {}).forEach(function (cid) {
+      var c = el(cid);
+      if (!c) return;
+      (s.sort[cid] || []).forEach(function (k) {
+        var it = c.querySelector('.sort-item[data-key="' + k + '"]');
+        if (it) { c.appendChild(it); etwas = true; }
+      });
+      updateSortButtons(c);
+    });
+    Object.keys(s.pads || {}).forEach(function (id) {
+      var pad = padRegistry[id];
+      if (pad) { pad.setStrokes(s.pads[id]); etwas = true; }
+    });
+    return etwas;
+  }
+
+  function saveNow() {
+    if (!autosaveKey) return;
+    try {
+      var json = JSON.stringify(collectState(true));
+      // Zeichnungen können groß werden; notfalls lieber die Eingaben retten.
+      if (json.length > 2000000) json = JSON.stringify(collectState(false));
+      storeSet(autosaveKey, json);
+    } catch (e) {}
+  }
+
+  function scheduleSave() {
+    if (!autosaveKey) return;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(saveNow, 400);
+  }
+
+  function clearSaved() {
+    if (autosaveKey) storeDel(autosaveKey);
+    // Schlüssel abschalten und laufende Speicherung abbrechen: sonst schreibt
+    // der pagehide-/beforeunload-Haken beim Neuladen sofort alles zurück und
+    // „Neu anfangen" hätte keine Wirkung.
+    autosaveKey = null;
+    clearTimeout(autosaveTimer);
+    location.reload();
+  }
+
+  function mkResetBtn(text, frage, cls) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = text;
+    b.addEventListener("click", function () {
+      if (confirm(frage)) clearSaved();
+    });
+    return b;
+  }
+
+  function showRestoreBar() {
+    var root = el("wbWorksheet");
+    if (!root) return;
+    var bar = document.createElement("div");
+    bar.className = "restore-bar no-print";
+    var txt = document.createElement("span");
+    txt.textContent = "Deine Eingaben von vorhin wurden wiederhergestellt.";
+    bar.appendChild(txt);
+    bar.appendChild(mkResetBtn("Neu anfangen",
+      "Alle deine Eingaben auf diesem Blatt löschen und neu anfangen?", "btn btn-ghost btn-sm"));
+    root.insertBefore(bar, root.firstChild);
+  }
+
+  function wireAutosave(project) {
+    // Auf dem Lösungsblatt gibt es nichts zu retten, und in der Live-Vorschau
+    // des Baukastens würde Zwischenspeichern nur die Ansicht der Lehrkraft
+    // mit alten Probe-Eingaben verunreinigen.
+    if (!project || project.solutionMode || project.previewMode) return;
+    if (!storeSet("wb-test", "1")) return;   // z. B. privater Modus
+    storeDel("wb-test");
+    autosaveKey = "baukasten:" + ((project.meta && project.meta.filename) || "arbeitsblatt");
+
+    var raw = storeGet(autosaveKey), wieder = false;
+    if (raw) { try { wieder = applyState(JSON.parse(raw)); } catch (e) {} }
+
+    document.addEventListener("input", scheduleSave, true);
+    document.addEventListener("change", scheduleSave, true);
+    global.addEventListener("pagehide", saveNow);
+    global.addEventListener("beforeunload", saveNow);
+
+    if (wieder) showRestoreBar();
+    var foot = document.querySelector("footer.appfoot");
+    if (foot) {
+      foot.appendChild(document.createTextNode(" · "));
+      foot.appendChild(mkResetBtn("Eingaben auf diesem Gerät löschen",
+        "Alle deine Eingaben auf diesem Blatt löschen?", "linklike"));
+    }
+  }
+
   // Ein Element um eine Position nach oben (-1) oder unten (+1) schieben.
   // Das ist der verlässliche Weg auf Geräten, auf denen Ziehen hakt.
   function moveSortItem(item, dir) {
@@ -1544,6 +1720,7 @@ select.choice.field-bad {
     void item.offsetWidth;                 // Neustart der Hervorhebung erzwingen
     item.classList.add("just-moved");
     updateSortButtons(container);
+    scheduleSave();
   }
 
   // Hoch/Runter am jeweiligen Rand ausgrauen, damit sichtbar ist, was geht.
@@ -1641,6 +1818,7 @@ select.choice.field-bad {
             if (drag.before) container.insertBefore(item, overItem);
             else container.insertBefore(item, overItem.nextSibling);
             updateSortButtons(container);
+            scheduleSave();
           }
         }
         drag = null;
@@ -1995,7 +2173,7 @@ select.choice.field-bad {
     fieldElId: fieldElId, checkFieldsTask: checkFieldsTask, renderTemplate: renderTemplate,
     renderTemplateSolution: renderTemplateSolution,
     seededShuffle: seededShuffle, wireSortList: wireSortList, checkSortTask: checkSortTask,
-    moveSortItem: moveSortItem,
+    moveSortItem: moveSortItem, wireAutosave: wireAutosave,
     offerDownload: offerDownload, exportPdf: exportPdf, buildPdfBlob: buildPdfBlob,
     ensurePdfLibs: ensurePdfLibs,
     computePagination: computePagination, computePageBreakOffsets: computePageBreakOffsets,
@@ -3256,6 +3434,10 @@ select.choice.field-bad {
     function updatePageBreaks() { E.renderPageBreakOverlays("wbWorksheet"); }
     E.redrawCallbacks.push(updatePageBreaks);
     updatePageBreaks();
+
+    // Zuletzt: Eingaben wiederherstellen und ab jetzt mitschreiben. Muss nach
+    // dem Mounten aller Bausteine laufen, damit Felder und Zeichenflächen da sind.
+    E.wireAutosave(project);
   }
 
   global.BlockRegistry = Registry;
@@ -3264,7 +3446,7 @@ select.choice.field-bad {
 })(window);
 </script>
 <script>
-window.WB_PROJECT = {"meta":{"chapterCode":"0","chapterTitle":"Wiederholung Jahrgangsstufe 9","title":"Fit für die 10. Klasse?","subtitle":"Mathematik · Jahrgangsstufe 10 · Selbstkontrolle","klasse":"10","datum":"","filename":"jgst10_wiederholung","slim":true},"blocks":[{"id":"b1","type":"context","config":{"html":"Dieses Blatt geht quer durch die \u003cstrong>Jahrgangsstufe 9\u003c/strong> – entlang der Werkzeuge, auf denen die 10. Klasse aufbaut. Trage deine Ergebnisse ein und prüfe sie selbst; bei Bedarf hilft dir der Tipp weiter. Notiere dir, welche Aufgaben dir schwergefallen sind – genau dort lohnt sich das Wiederholen."},"span":4,"col":0,"row":0},{"id":"b2","type":"phaseHeading","config":{"tag":"Baustein 1","title":"Reelle Zahlen, Potenzen und Gleichungen"},"span":4,"col":0,"row":1},{"id":"b3","type":"task","config":{"prompt":"Berechne die Terme im Kopf. Gib bei der letzten Aufgabe nur den Exponenten an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">√144 =\u003c/span> {{a}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">√8 · √2 =\u003c/span> {{b}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">2\u003csup>−3\u003c/sup> =\u003c/span> {{c}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">(5²)³ = 5\u003c/span>\u003csup>{{d}}\u003c/sup>","fields":[{"id":"a","type":"number","unit":"","expected":12,"options":[]},{"id":"b","type":"number","unit":"","expected":4,"options":[]},{"id":"c","type":"number","unit":"","expected":0.125,"options":[]},{"id":"d","type":"number","unit":"","expected":6,"options":[]}],"hints":["√8 · √2 = √(8 · 2). Was steht dann unter der Wurzel?","Eine Potenz wird potenziert, indem man die Exponenten multipliziert.","2⁻³ = 1 : 2³ = 1 : 8."],"solution":""},"span":4,"col":0,"row":2},{"id":"b4","type":"task","config":{"prompt":"Löse die quadratische Gleichung x² − 6x + 8 = 0. Gib die kleinere Lösung zuerst an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">x₁ =\u003c/span> {{x1}} &nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{x2}}","fields":[{"id":"x1","type":"number","unit":"","expected":2,"options":[]},{"id":"x2","type":"number","unit":"","expected":4,"options":[]}],"hints":["Setze a = 1, b = −6, c = 8 in die Lösungsformel ein.","Unter der Wurzel steht b² − 4ac = 36 − 32 = 4."],"solution":""},"span":4,"col":0,"row":3},{"id":"b5","type":"sortTask","config":{"prompt":"Bringe die Schritte der quadratischen Ergänzung für x² + 6x + 5 = 0 in die richtige Reihenfolge.","stars":2,"knobel":false,"items":["x² + 6x = −5","x² + 6x + 9 = −5 + 9","(x + 3)² = 4","x + 3 = 2  oder  x + 3 = −2","x₁ = −1  und  x₂ = −5"]},"span":4,"col":0,"row":4},{"id":"b6","type":"phaseHeading","config":{"tag":"Baustein 2","title":"Quadratische Funktionen und Potenzfunktionen"},"span":4,"col":0,"row":5},{"id":"b7","type":"task","config":{"prompt":"Gegeben ist f(x) = (x − 3)² − 4. Gib den Scheitelpunkt, die beiden Nullstellen und den y-Achsenabschnitt an. Entscheide außerdem, welche Symmetrie der Graph von g(x) = x⁴ besitzt.","stars":2,"knobel":false,"drawpad":false,"template":"Scheitel: \u003cspan class=\"formula\">S(\u003c/span> {{sx}} \u003cspan class=\"formula\">|\u003c/span> {{sy}} \u003cspan class=\"formula\">)\u003c/span>\u003cbr>Nullstellen: \u003cspan class=\"formula\">x₁ =\u003c/span> {{n1}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{n2}}\u003cbr>y-Achsenabschnitt: \u003cspan class=\"formula\">f(0) =\u003c/span> {{y0}}\u003cbr>Der Graph von \u003cspan class=\"formula\">g(x) = x⁴\u003c/span> ist {{sym}}","fields":[{"id":"sx","type":"number","unit":"","expected":3,"options":[]},{"id":"sy","type":"number","unit":"","expected":-4,"options":[]},{"id":"n1","type":"number","unit":"","expected":1,"options":[]},{"id":"n2","type":"number","unit":"","expected":5,"options":[]},{"id":"y0","type":"number","unit":"","expected":5,"options":[]},{"id":"sym","type":"choice","expected":"achsen","unit":"","options":[{"value":"achsen","label":"achsensymmetrisch zur y-Achse"},{"value":"punkt","label":"punktsymmetrisch zum Ursprung"},{"value":"keine","label":"weder noch"}]}],"hints":["Die Scheitelform lautet f(x) = (x − d)² + e mit dem Scheitel S(d | e). Achte auf das Vorzeichen von d.","Für die Nullstellen setzt du (x − 3)² − 4 = 0, also (x − 3)² = 4.","Potenzfunktionen mit geradem Exponenten sind achsensymmetrisch, mit ungeradem punktsymmetrisch."],"solution":""},"span":4,"col":0,"row":6},{"id":"b8","type":"coordinatePlane","config":{"caption":"Kontrolle: Vergleiche deine Werte mit dem Graphen.","xMin":-2,"xMax":8,"yMin":-5,"yMax":5,"xLabel":"x","yLabel":"y","xStep":1,"yStep":1,"functions":[{"expr":"(x-3)^2-4","color":"exp","label":"f(x) = (x − 3)² − 4"}]},"span":2,"col":0,"row":7},{"id":"b9","type":"merksatz","config":{"variant":"linear","label":"Wozu in Jgst. 10?","html":"Potenzgesetze und Wurzeln tragen \u003cstrong>exponentielles Wachstum und den Logarithmus\u003c/strong>. Die quadratische Ergänzung brauchst du wieder bei den Scheitelpunkten \u003cstrong>ganzrationaler Funktionen\u003c/strong>, und die Symmetrie von Potenzfunktionen hilft dir, deren Graphen ohne Wertetabelle zu skizzieren."},"span":2,"col":2,"row":7},{"id":"b10","type":"phaseHeading","config":{"tag":"Baustein 3","title":"Pythagoras, Ähnlichkeit und Trigonometrie"},"span":4,"col":0,"row":8},{"id":"b11","type":"task","config":{"prompt":"Ein Karton hat die Kantenlängen a = 12 cm, b = 9 cm und c = 20 cm. Berechne zuerst die Diagonale d der Grundfläche, dann die Raumdiagonale e. Beide Ergebnisse sind ganzzahlig.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">d =\u003c/span> {{d}} \u003cspan class=\"formula\">cm\u003c/span> &nbsp;&nbsp; \u003cspan class=\"formula\">e =\u003c/span> {{e}} \u003cspan class=\"formula\">cm\u003c/span>","fields":[{"id":"d","type":"number","unit":"","expected":15,"options":[]},{"id":"e","type":"number","unit":"","expected":25,"options":[]}],"hints":["Die Grundfläche ist ein Rechteck mit den Seiten 12 cm und 9 cm.","Für die Raumdiagonale bildest du ein rechtwinkliges Dreieck aus d, c und e."],"solution":"d = √(12² + 9²) = √(144 + 81) = √225 = 15 cm.\ne = √(d² + c²) = √(15² + 20²) = √(225 + 400) = √625 = 25 cm."},"span":4,"col":0,"row":9},{"id":"b12","type":"task","config":{"prompt":"Ein senkrecht stehender Stab von 1,5 m Höhe wirft einen 2 m langen Schatten. Zur gleichen Zeit wirft ein Baum einen 14 m langen Schatten. Berechne die Höhe des Baums.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">h =\u003c/span> {{h}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"h","type":"number","unit":"","expected":10.5,"options":[]}],"hints":["Stab und Baum bilden mit ihren Schatten zwei ähnliche Dreiecke.","Es gilt h : 14 = 1,5 : 2."],"solution":"Die Sonnenstrahlen treffen parallel ein, deshalb sind die beiden Dreiecke ähnlich. Aus h : 14 = 1,5 : 2 folgt h = 1,5 · 14 : 2 = 10,5 m."},"span":4,"col":0,"row":10},{"id":"b13","type":"task","config":{"prompt":"Eine 8 m lange Leiter lehnt an einer Hauswand und reicht dort 4 m hoch. Berechne den Neigungswinkel α der Leiter gegen den Boden und den Abstand des Leiterfußes von der Wand (auf eine Dezimale gerundet).","stars":3,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">α =\u003c/span> {{alpha}} \u003cspan class=\"formula\">°\u003c/span> &nbsp;&nbsp; Abstand \u003cspan class=\"formula\">=\u003c/span> {{x}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"alpha","type":"number","unit":"","expected":30,"options":[]},{"id":"x","type":"number","unit":"","expected":6.9,"options":[]}],"hints":["Die Leiter ist die Hypotenuse, die Höhe an der Wand die Gegenkathete von α.","sin α = 4 : 8 = 0,5. Welcher Winkel hat den Sinus 0,5?","Den Abstand bekommst du mit dem Satz des Pythagoras oder über cos α."],"solution":"sin α = 4 m : 8 m = 0,5, also α = 30°.\nAbstand = √(8² − 4²) = √(64 − 16) = √48 ≈ 6,9 m (alternativ: 8 m · cos 30° ≈ 6,9 m)."},"span":4,"col":0,"row":11},{"id":"b14","type":"merksatz","config":{"variant":"exp","label":"Wozu in Jgst. 10?","html":"Der Satz des Pythagoras ist das Arbeitspferd der \u003cstrong>Raumgeometrie\u003c/strong> – ohne ihn keine Pyramidenhöhe und keine Mantellinie am Kegel. Und aus dem rechtwinkligen Dreieck wird über den Einheitskreis die \u003cstrong>Sinusfunktion\u003c/strong>."},"span":4,"col":0,"row":12},{"id":"b15","type":"phaseHeading","config":{"tag":"Baustein 4","title":"Wahrscheinlichkeit verknüpfter Ereignisse"},"span":4,"col":0,"row":13},{"id":"b16","type":"task","config":{"prompt":"In einer Urne liegen 3 rote und 2 blaue Kugeln. Es wird zweimal gezogen, wobei die Kugel nach dem ersten Zug zurückgelegt wird. Berechne die Wahrscheinlichkeiten als Dezimalzahl.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">P(beide rot) =\u003c/span> {{p1}} &nbsp;&nbsp; \u003cspan class=\"formula\">P(mindestens eine blaue) =\u003c/span> {{p2}}","fields":[{"id":"p1","type":"number","unit":"","expected":0.36,"options":[]},{"id":"p2","type":"number","unit":"","expected":0.64,"options":[]}],"hints":["Zeichne ein Baumdiagramm mit zwei Stufen. Bei jedem Zug ist P(rot) = 3/5.","Entlang eines Pfades wird multipliziert.","„Mindestens eine blaue\" ist das Gegenereignis zu „beide rot\"."],"solution":"P(beide rot) = 3/5 · 3/5 = 9/25 = 0,36.\nP(mindestens eine blaue) = 1 − P(beide rot) = 1 − 0,36 = 0,64."},"span":4,"col":0,"row":14},{"id":"b17","type":"phaseHeading","config":{"tag":"Zum Knobeln","title":"Eine Brücke in die 10. Klasse"},"span":4,"col":0,"row":15},{"id":"b18","type":"task","config":{"prompt":"Zeige mithilfe des Satzes von Pythagoras am Einheitskreis, dass für jeden Winkel α gilt: sin²α + cos²α = 1. Fertige zuerst eine beschriftete Skizze an und begründe dann in zwei bis drei Sätzen.","stars":3,"knobel":true,"drawpad":true,"template":"","fields":[],"hints":[],"solution":"Skizze: Einheitskreis um den Ursprung mit Radius 1. Zum Winkel α gehört der Punkt P auf dem Kreis mit den Koordinaten P(cos α | sin α).\n\nBegründung: Fällt man von P das Lot auf die x-Achse, entsteht ein rechtwinkliges Dreieck. Seine Katheten sind cos α (waagrecht) und sin α (senkrecht), seine Hypotenuse ist der Radius mit der Länge 1. Nach dem Satz des Pythagoras gilt cos²α + sin²α = 1² = 1.\n\nDiese Beziehung heißt „trigonometrischer Pythagoras\" und wird in Jgst. 10 bei der Sinus- und Kosinusfunktion ständig gebraucht."},"span":4,"col":0,"row":16}],"solutionMode":false,"previewMode":false};
+window.WB_PROJECT = {"meta":{"chapterCode":"0","chapterTitle":"Wiederholung Jahrgangsstufe 9","title":"Fit für die 10. Klasse?","subtitle":"Mathematik · Jahrgangsstufe 10 · Selbstkontrolle","klasse":"10","datum":"","filename":"jgst10_wiederholung","slim":true},"blocks":[{"id":"b1","type":"context","config":{"html":"Dieses Blatt geht quer durch die \u003cstrong>Jahrgangsstufe 9\u003c/strong> – entlang der Werkzeuge, auf denen die 10. Klasse aufbaut. Trage deine Ergebnisse ein und prüfe sie selbst; bei Bedarf hilft dir der Tipp weiter. Notiere dir, welche Aufgaben dir schwergefallen sind – genau dort lohnt sich das Wiederholen."},"span":4,"col":0,"row":0},{"id":"b2","type":"phaseHeading","config":{"tag":"Baustein 1","title":"Reelle Zahlen, Potenzen und Gleichungen"},"span":4,"col":0,"row":1},{"id":"b3","type":"task","config":{"prompt":"Berechne die Terme im Kopf. Gib bei der letzten Aufgabe nur den Exponenten an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">√144 =\u003c/span> {{a}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">√8 · √2 =\u003c/span> {{b}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">2\u003csup>−3\u003c/sup> =\u003c/span> {{c}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">(5²)³ = 5\u003c/span>\u003csup>{{d}}\u003c/sup>","fields":[{"id":"a","type":"number","unit":"","expected":12,"options":[]},{"id":"b","type":"number","unit":"","expected":4,"options":[]},{"id":"c","type":"number","unit":"","expected":0.125,"options":[]},{"id":"d","type":"number","unit":"","expected":6,"options":[]}],"hints":["√8 · √2 = √(8 · 2). Was steht dann unter der Wurzel?","Eine Potenz wird potenziert, indem man die Exponenten multipliziert.","2⁻³ = 1 : 2³ = 1 : 8."],"solution":""},"span":4,"col":0,"row":2},{"id":"b4","type":"task","config":{"prompt":"Löse die quadratische Gleichung x² − 6x + 8 = 0. Gib die kleinere Lösung zuerst an.","stars":1,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">x₁ =\u003c/span> {{x1}} &nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{x2}}","fields":[{"id":"x1","type":"number","unit":"","expected":2,"options":[]},{"id":"x2","type":"number","unit":"","expected":4,"options":[]}],"hints":["Setze a = 1, b = −6, c = 8 in die Lösungsformel ein.","Unter der Wurzel steht b² − 4ac = 36 − 32 = 4."],"solution":""},"span":4,"col":0,"row":3},{"id":"b5","type":"sortTask","config":{"prompt":"Bringe die Schritte der quadratischen Ergänzung für x² + 6x + 5 = 0 in die richtige Reihenfolge.","stars":2,"knobel":false,"items":["x² + 6x = −5","x² + 6x + 9 = −5 + 9","(x + 3)² = 4","x + 3 = 2  oder  x + 3 = −2","x₁ = −1  und  x₂ = −5"]},"span":4,"col":0,"row":4},{"id":"b6","type":"phaseHeading","config":{"tag":"Baustein 2","title":"Quadratische Funktionen und Potenzfunktionen"},"span":4,"col":0,"row":5},{"id":"b7","type":"task","config":{"prompt":"Gegeben ist f(x) = (x − 3)² − 4. Gib den Scheitelpunkt, die beiden Nullstellen und den y-Achsenabschnitt an. Entscheide außerdem, welche Symmetrie der Graph von g(x) = x⁴ besitzt.","stars":2,"knobel":false,"drawpad":false,"template":"Scheitel: \u003cspan class=\"formula\">S(\u003c/span> {{sx}} \u003cspan class=\"formula\">|\u003c/span> {{sy}} \u003cspan class=\"formula\">)\u003c/span>\u003cbr>Nullstellen: \u003cspan class=\"formula\">x₁ =\u003c/span> {{n1}} &nbsp;&nbsp;&nbsp; \u003cspan class=\"formula\">x₂ =\u003c/span> {{n2}}\u003cbr>y-Achsenabschnitt: \u003cspan class=\"formula\">f(0) =\u003c/span> {{y0}}\u003cbr>Der Graph von \u003cspan class=\"formula\">g(x) = x⁴\u003c/span> ist {{sym}}","fields":[{"id":"sx","type":"number","unit":"","expected":3,"options":[]},{"id":"sy","type":"number","unit":"","expected":-4,"options":[]},{"id":"n1","type":"number","unit":"","expected":1,"options":[]},{"id":"n2","type":"number","unit":"","expected":5,"options":[]},{"id":"y0","type":"number","unit":"","expected":5,"options":[]},{"id":"sym","type":"choice","expected":"achsen","unit":"","options":[{"value":"achsen","label":"achsensymmetrisch zur y-Achse"},{"value":"punkt","label":"punktsymmetrisch zum Ursprung"},{"value":"keine","label":"weder noch"}]}],"hints":["Die Scheitelform lautet f(x) = (x − d)² + e mit dem Scheitel S(d | e). Achte auf das Vorzeichen von d.","Für die Nullstellen setzt du (x − 3)² − 4 = 0, also (x − 3)² = 4.","Potenzfunktionen mit geradem Exponenten sind achsensymmetrisch, mit ungeradem punktsymmetrisch."],"solution":""},"span":4,"col":0,"row":6},{"id":"b8","type":"coordinatePlane","config":{"caption":"Kontrolle: Vergleiche deine Werte mit dem Graphen.","xMin":-2,"xMax":8,"yMin":-5,"yMax":5,"xLabel":"x","yLabel":"y","xStep":1,"yStep":1,"functions":[{"expr":"(x-3)^2-4","color":"exp","label":"f(x) = (x − 3)² − 4"}]},"span":2,"col":0,"row":7},{"id":"b9","type":"merksatz","config":{"variant":"linear","label":"Wozu in Jgst. 10?","html":"Potenzgesetze und Wurzeln tragen \u003cstrong>exponentielles Wachstum und den Logarithmus\u003c/strong>. Die quadratische Ergänzung brauchst du wieder bei den Scheitelpunkten \u003cstrong>ganzrationaler Funktionen\u003c/strong>, und die Symmetrie von Potenzfunktionen hilft dir, deren Graphen ohne Wertetabelle zu skizzieren."},"span":2,"col":2,"row":7},{"id":"b10","type":"phaseHeading","config":{"tag":"Baustein 3","title":"Pythagoras, Ähnlichkeit und Trigonometrie"},"span":4,"col":0,"row":8},{"id":"b11","type":"task","config":{"prompt":"Ein Karton hat die Kantenlängen a = 12 cm, b = 9 cm und c = 20 cm. Berechne zuerst die Diagonale d der Grundfläche, dann die Raumdiagonale e. Beide Ergebnisse sind ganzzahlig.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">d =\u003c/span> {{d}} \u003cspan class=\"formula\">cm\u003c/span> &nbsp;&nbsp; \u003cspan class=\"formula\">e =\u003c/span> {{e}} \u003cspan class=\"formula\">cm\u003c/span>","fields":[{"id":"d","type":"number","unit":"","expected":15,"options":[]},{"id":"e","type":"number","unit":"","expected":25,"options":[]}],"hints":["Die Grundfläche ist ein Rechteck mit den Seiten 12 cm und 9 cm.","Für die Raumdiagonale bildest du ein rechtwinkliges Dreieck aus d, c und e."],"solution":"d = √(12² + 9²) = √(144 + 81) = √225 = 15 cm.\ne = √(d² + c²) = √(15² + 20²) = √(225 + 400) = √625 = 25 cm."},"span":4,"col":0,"row":9},{"id":"b12","type":"task","config":{"prompt":"Ein senkrecht stehender Stab von 1,5 m Höhe wirft einen 2 m langen Schatten. Zur gleichen Zeit wirft ein Baum einen 14 m langen Schatten. Berechne die Höhe des Baums.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">h =\u003c/span> {{h}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"h","type":"number","unit":"","expected":10.5,"options":[]}],"hints":["Stab und Baum bilden mit ihren Schatten zwei ähnliche Dreiecke.","Es gilt h : 14 = 1,5 : 2."],"solution":"Die Sonnenstrahlen treffen parallel ein, deshalb sind die beiden Dreiecke ähnlich. Aus h : 14 = 1,5 : 2 folgt h = 1,5 · 14 : 2 = 10,5 m."},"span":4,"col":0,"row":10},{"id":"b13","type":"task","config":{"prompt":"Eine 8 m lange Leiter lehnt an einer Hauswand und reicht dort 4 m hoch. Berechne den Neigungswinkel α der Leiter gegen den Boden und den Abstand des Leiterfußes von der Wand (auf eine Dezimale gerundet).","stars":3,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">α =\u003c/span> {{alpha}} \u003cspan class=\"formula\">°\u003c/span> &nbsp;&nbsp; Abstand \u003cspan class=\"formula\">=\u003c/span> {{x}} \u003cspan class=\"formula\">m\u003c/span>","fields":[{"id":"alpha","type":"number","unit":"","expected":30,"options":[]},{"id":"x","type":"number","unit":"","expected":6.9,"options":[]}],"hints":["Die Leiter ist die Hypotenuse, die Höhe an der Wand die Gegenkathete von α.","sin α = 4 : 8 = 0,5. Welcher Winkel hat den Sinus 0,5?","Den Abstand bekommst du mit dem Satz des Pythagoras oder über cos α."],"solution":"sin α = 4 m : 8 m = 0,5, also α = 30°.\nAbstand = √(8² − 4²) = √(64 − 16) = √48 ≈ 6,9 m (alternativ: 8 m · cos 30° ≈ 6,9 m)."},"span":4,"col":0,"row":11},{"id":"b14","type":"merksatz","config":{"variant":"exp","label":"Wozu in Jgst. 10?","html":"Der Satz des Pythagoras ist das Arbeitspferd der \u003cstrong>Raumgeometrie\u003c/strong> – ohne ihn keine Pyramidenhöhe und keine Mantellinie am Kegel. Und aus dem rechtwinkligen Dreieck wird über den Einheitskreis die \u003cstrong>Sinusfunktion\u003c/strong>."},"span":4,"col":0,"row":12},{"id":"b15","type":"phaseHeading","config":{"tag":"Baustein 4","title":"Wahrscheinlichkeit verknüpfter Ereignisse"},"span":4,"col":0,"row":13},{"id":"b16","type":"task","config":{"prompt":"In einer Urne liegen 3 rote und 2 blaue Kugeln. Es wird zweimal gezogen, wobei die Kugel nach dem ersten Zug zurückgelegt wird. Berechne die Wahrscheinlichkeiten als Dezimalzahl.","stars":2,"knobel":false,"drawpad":false,"template":"\u003cspan class=\"formula\">P(beide rot) =\u003c/span> {{p1}} &nbsp;&nbsp; \u003cspan class=\"formula\">P(mindestens eine blaue) =\u003c/span> {{p2}}","fields":[{"id":"p1","type":"number","unit":"","expected":0.36,"options":[]},{"id":"p2","type":"number","unit":"","expected":0.64,"options":[]}],"hints":["Zeichne ein Baumdiagramm mit zwei Stufen. Bei jedem Zug ist P(rot) = 3/5.","Entlang eines Pfades wird multipliziert.","„Mindestens eine blaue\" ist das Gegenereignis zu „beide rot\"."],"solution":"P(beide rot) = 3/5 · 3/5 = 9/25 = 0,36.\nP(mindestens eine blaue) = 1 − P(beide rot) = 1 − 0,36 = 0,64."},"span":4,"col":0,"row":14},{"id":"b17","type":"phaseHeading","config":{"tag":"Zum Knobeln","title":"Eine Brücke in die 10. Klasse"},"span":4,"col":0,"row":15},{"id":"b18","type":"task","config":{"prompt":"Zeige mithilfe des Satzes von Pythagoras am Einheitskreis, dass für jeden Winkel α gilt: sin²α + cos²α = 1. Fertige zuerst eine beschriftete Skizze an und begründe dann in zwei bis drei Sätzen.","stars":3,"knobel":true,"drawpad":true,"template":"","fields":[],"hints":[],"solution":"Skizze: Einheitskreis um den Ursprung mit Radius 1. Zum Winkel α gehört der Punkt P auf dem Kreis mit den Koordinaten P(cos α | sin α).\n\nBegründung: Fällt man von P das Lot auf die x-Achse, entsteht ein rechtwinkliges Dreieck. Seine Katheten sind cos α (waagrecht) und sin α (senkrecht), seine Hypotenuse ist der Radius mit der Länge 1. Nach dem Satz des Pythagoras gilt cos²α + sin²α = 1² = 1.\n\nDiese Beziehung heißt „trigonometrischer Pythagoras\" und wird in Jgst. 10 bei der Sinus- und Kosinusfunktion ständig gebraucht."},"span":4,"col":0,"row":16}],"solutionMode":true,"previewMode":false};
 document.getElementById("wbRoot").outerHTML = window.WBRuntime.renderBody(window.WB_PROJECT);
 window.WBRuntime.mount(window.WB_PROJECT);
 </script>
