@@ -1,0 +1,3672 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I.1 Lineares und exponentielles Wachstum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Karla:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>/*
+ * worksheet.css – gemeinsames visuelles Erscheinungsbild der Arbeitsblätter.
+ * Wird identisch verwendet in: Baukasten-Vorschau, exportiertes Arbeitsblatt.
+ * Basiert auf dem Hausstil des Wachstum-Prototyps (top.html).
+ */
+:root {
+  --paper: #F4F6F5;
+  --paper-raised: #FFFFFF;
+  --ink: #1B2430;
+  --ink-soft: #566072;
+  --line: #D7DEDC;
+  --accent-primary: #3D5A80;
+  --accent-primary-soft: #E7ECF3;
+  --accent-linear: #2E7D8C;
+  --accent-linear-soft: #DCEEF0;
+  --accent-exp: #C85A22;
+  --accent-exp-soft: #FBE7DA;
+  --success: #2F9E44;
+  --success-soft: #E3F6E6;
+  --danger: #C1443C;
+  --danger-soft: #FBEAE8;
+  --shadow: 0 1px 2px rgba(27,36,48,0.07), 0 6px 18px rgba(27,36,48,0.07);
+  --table-line: var(--line);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12181F;
+    --paper-raised: #1B232C;
+    --ink: #E7ECEF;
+    --ink-soft: #A7B2BD;
+    --line: #2B3542;
+    --accent-primary: #8FADD6;
+    --accent-primary-soft: #243347;
+    --accent-linear: #6BC4CF;
+    --accent-linear-soft: #173236;
+    --accent-exp: #F0935B;
+    --accent-exp-soft: #3A2718;
+    --success: #63CB85;
+    --success-soft: #163A22;
+    --danger: #E1685C;
+    --danger-soft: #3A1E1B;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.35);
+    --table-line: rgba(255,255,255,0.18);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12181F;
+  --paper-raised: #1B232C;
+  --ink: #E7ECEF;
+  --ink-soft: #A7B2BD;
+  --line: #2B3542;
+  --accent-primary: #8FADD6;
+  --accent-primary-soft: #243347;
+  --accent-linear: #6BC4CF;
+  --accent-linear-soft: #173236;
+  --accent-exp: #F0935B;
+  --accent-exp-soft: #3A2718;
+  --success: #63CB85;
+  --success-soft: #163A22;
+  --danger: #E1685C;
+  --danger-soft: #3A1E1B;
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 20px rgba(0,0,0,0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-attachment: local;
+  color: var(--ink);
+  font-family: "Karla", ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.55;
+}
+h1, h2, h3, .display {
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  text-wrap: balance;
+  margin: 0;
+}
+.mono, .val, input[type="text"], input[type="number"] {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+a { color: var(--accent-primary); }
+button { font-family: inherit; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper-raised);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.topbar-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.topbar h1 { font-size: 1.05rem; font-weight: 600; flex: 1 1 auto; min-width: 180px; }
+.chapter-eyebrow {
+  display: block;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  touch-action: manipulation;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 8px 12px; min-height: 38px; font-size: 0.82rem; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+main { max-width: 800px; margin: 0 auto; padding: 20px 18px 80px; position: relative; }
+
+/* Seitenumbruch-Indikator (siehe engine.js renderPageBreakOverlays): zeigt
+   in der Live-Vorschau, wo der PDF-Export vermutlich eine neue Seite
+   beginnen würde – rein informativ, nie Teil des Exports/Drucks. */
+.wb-pagebreak-line {
+  position: absolute;
+  left: -4px; right: -4px; height: 0;
+  border-top: 2px dashed #d6336c;
+  pointer-events: none;
+  z-index: 5;
+}
+.wb-pagebreak-label {
+  position: absolute; top: -9px; right: 2px;
+  background: #d6336c; color: #fff;
+  font: 600 10px/1.5 var(--font-mono, "JetBrains Mono", monospace);
+  padding: 1px 7px; border-radius: 4px 4px 0 0;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+@media print { .wb-pagebreak-line { display: none !important; } }
+
+.header-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  margin-bottom: 22px;
+}
+.header-card h1 { font-size: 1.6rem; }
+.header-card .subtitle { color: var(--ink-soft); margin-top: 4px; font-size: 0.95rem; }
+.chapter-eyebrow-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.chapter-eyebrow-row .chapter-eyebrow { margin-bottom: 0; }
+.chapter-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.phase-heading { break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
+.phase-eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.phase-eyebrow .tag {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+.phase-heading h2 { font-size: 1.25rem; }
+.card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+.card p { margin: 0 0 10px; }
+.card p:last-child { margin-bottom: 0; }
+
+/* Rasterzeile: bis zu 4 Einheiten (= 25/50/75/100%) nebeneinander. Ein
+   Baustein-Baustein ohne eigene Breiten-Einstellung nimmt alle 4 Einheiten
+   (= volle Breite) ein und verhält sich optisch wie zuvor. */
+.wb-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px 16px;
+  align-items: start;
+  margin-bottom: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.wb-row > .wb-block { min-width: 0; }
+/* Sicherheitsnetz nur für echte Schmalformate (Handy hochkant) – bewusst
+   niedriger als die ~600–650px, die die Live-Vorschau-Spalte im Editor selbst
+   schon einnimmt, sonst würde „nebeneinander“ dort nie sichtbar (und auch der
+   PDF-Export aus dem Editor liefe über exakt diese Breite). */
+@media (max-width: 480px) {
+  .wb-row { grid-template-columns: 1fr; }
+  .wb-row > .wb-block { grid-column: span 1 !important; }
+}
+
+.merksatz, .merksatz-exp, .merksatz-neutral {
+  border-left: 4px solid var(--accent-primary);
+  background: var(--accent-primary-soft);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+.merksatz-exp { border-left-color: var(--accent-exp); background: var(--accent-exp-soft); }
+.merksatz-neutral { border-left-color: var(--ink-soft); background: var(--paper); }
+.merksatz .label, .merksatz-exp .label, .merksatz-neutral .label {
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-primary);
+  margin-bottom: 6px;
+}
+.merksatz-exp .label { color: var(--accent-exp); }
+.merksatz-neutral .label { color: var(--ink-soft); }
+.formula {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.swatch-linear, .swatch-exp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+.swatch-linear::before, .swatch-exp::before {
+  content: "";
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.swatch-linear::before { background: var(--accent-linear); }
+.swatch-exp::before { background: var(--accent-exp); }
+.swatch-linear { color: var(--accent-linear); }
+.swatch-exp { color: var(--accent-exp); }
+
+.example-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 0.92rem;
+  border: 1px solid var(--table-line);
+}
+.example-table th, .example-table td {
+  border: 1px solid var(--table-line);
+  padding: 6px 10px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.example-table th { font-weight: 700; }
+.example-table thead th { background: var(--accent-primary-soft); }
+.example-table tbody th { background: transparent; }
+/* Erste Spalte (Zeilen-Beschriftung) automatisch auf ihren Inhalt schrumpfen,
+   statt sich unnötig breite Reste der 100%-Tabellenbreite zu nehmen. Die
+   übrigen (Daten-)Spalten teilen sich den verbleibenden Platz gleichmäßig. */
+.example-table th:first-child,
+.example-table td:first-child { width: 1%; white-space: nowrap; }
+
+.graph-block { margin: 14px 0; }
+.graph-wrap {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  overflow-x: auto;
+}
+canvas.graph-canvas { display: block; width: 100%; height: 300px; touch-action: none; }
+
+.coord-plane-wrap {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  overflow-x: auto;
+}
+canvas.coord-plane-canvas { display: block; width: 100%; height: 320px; }
+.coord-plane-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+.coord-plane-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.coord-plane-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
+.coord-plane-legend-item.coord-plane-error { color: var(--danger); }
+
+.diagram-wrap {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  overflow-x: auto;
+}
+canvas.diagram-canvas { display: block; width: 100%; height: 300px; }
+
+.wb-image-empty {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  background: var(--paper-raised);
+}
+.wb-image { margin: 14px 0; max-width: 100%; }
+.wb-image img { display: block; width: 100%; height: auto; border-radius: 10px; }
+.wb-image.align-center { margin-left: auto; margin-right: auto; }
+.wb-image.align-left { margin-left: 0; margin-right: auto; }
+.wb-image.align-right { margin-left: auto; margin-right: 0; }
+.wb-image figcaption {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  text-align: center;
+  font-style: italic;
+}
+@media print { .wb-image { break-inside: avoid; } }
+.slider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 22px;
+  margin-top: 14px;
+}
+.slider-field label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.slider-field .val { font-weight: 700; }
+.slider-field.linear .val { color: var(--accent-linear); }
+.slider-field.exp .val { color: var(--accent-exp); }
+input[type="range"] {
+  width: 100%;
+  height: 36px;
+  accent-color: var(--accent-primary);
+  touch-action: manipulation;
+}
+.slider-field.linear input[type="range"] { accent-color: var(--accent-linear); }
+.slider-field.exp input[type="range"] { accent-color: var(--accent-exp); }
+
+.task-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.task-num {
+  flex: none;
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Outfit", sans-serif;
+}
+.task-num.knobel { background: var(--accent-exp-soft); color: var(--accent-exp); }
+.task-prompt { flex: 1 1 auto; font-weight: 600; }
+.task-prompt p { margin: 0; }
+.difficulty-stars {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  flex: none;
+}
+.difficulty-stars .filled { color: var(--accent-exp); }
+.difficulty-stars .empty { color: var(--line); }
+
+/* --- Sortier-Aufgabe (Drag & Drop, siehe engine.js wireSortList) --- */
+.sort-list { margin: 10px 0; }
+.sort-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper-raised);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  min-height: 44px;
+  transition: box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.sort-item.dragging { opacity: 0.4; }
+.sort-item.drag-over-top { box-shadow: 0 -3px 0 var(--accent-primary); }
+.sort-item.drag-over-bottom { box-shadow: 0 3px 0 var(--accent-primary); }
+.sort-handle {
+  flex: none;
+  cursor: grab;
+  color: var(--ink-soft);
+  font-size: 1.15rem;
+  touch-action: none;
+  line-height: 1;
+  padding: 4px 2px;
+}
+.sort-handle:active { cursor: grabbing; }
+.sort-text { flex: 1 1 auto; }
+
+.answer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+/* Die Aufgaben-Vorlage bekommt einen eigenen Block-Container, damit Text und
+   Eingabefelder normal fließen (mit <br> auch mehrzeilig). Läge sie direkt im
+   Flex-Container, würde jeder Textschnipsel ein eigenes Flex-Element. */
+.answer-template {
+  flex: 1 1 100%;
+  line-height: 2.6;
+}
+.fu-label { font-size: 0.85rem; color: var(--ink-soft); margin-right: 4px; }
+input[type="text"], input[type="number"] {
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 0.95rem;
+  min-height: 44px;
+  width: 100px;
+  background: var(--paper);
+  color: var(--ink);
+}
+input.field-input { width: auto; }
+input:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+select.choice {
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 0.95rem;
+  min-height: 44px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.feedback {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+.feedback.show { display: inline-flex; }
+.feedback.ok { background: var(--success-soft); color: var(--success); }
+.feedback.bad { background: var(--danger-soft); color: var(--danger); }
+
+.hint-area {
+  display: none;
+  margin-top: 8px;
+  font-size: 0.87rem;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--accent-exp);
+  padding-left: 10px;
+}
+.hint-area.show { display: block; }
+.hint-area p { margin: 4px 0; }
+
+.solution-area {
+  display: none;
+  margin-top: 10px;
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+.solution-area.show { display: block; }
+
+.drawpad-wrap {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  margin-top: 10px;
+}
+.drawpad-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.color-dot {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.color-dot.active { border-color: var(--ink); }
+canvas.drawpad-canvas {
+  width: 100%; height: 220px;
+  display: block;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 18px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  touch-action: none;
+}
+
+.scratch-fab {
+  position: fixed;
+  right: 18px; bottom: 18px;
+  z-index: 30;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.scratch-panel {
+  position: fixed;
+  right: 18px; bottom: 84px;
+  z-index: 30;
+  width: min(420px, calc(100vw - 36px));
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  display: none;
+}
+.scratch-panel.show { display: block; }
+.scratch-panel h3 { font-size: 0.95rem; margin-bottom: 6px; }
+
+footer.appfoot {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10px 18px 40px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.no-print { }
+body.exporting .no-print { visibility: hidden; }
+body.exporting { background-image: none; }
+body.exporting .feedback { display: none !important; }
+/* Tipps werden im PDF ausgeblendet – AUSSER auf dem Lösungsblatt, dort
+   gehören sie zur Lehrerfassung dazu. */
+body.exporting:not(.wb-solution) .hint-area { display: none !important; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.toast.show { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ---------- Lösungsblatt (Lehrerfassung) ---------- */
+.header-card.is-solution { border-color: var(--accent-exp); }
+.solution-badge {
+  display: inline-block;
+  margin: 8px 0 2px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--accent-exp);
+  color: #fff;
+  font-family: "Outfit", sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+.field-solution {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 6px;
+  background: var(--accent-exp-soft);
+  border-bottom: 2px solid var(--accent-exp);
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  margin-right: 2px;
+}
+.hint-area.open,
+.solution-area.open { display: block; }
+.solution-hints { margin: 4px 0 0; padding-left: 20px; }
+.solution-hints li { margin: 2px 0; }
+.sort-item.solved { cursor: default; }
+.sort-rank {
+  flex: none;
+  min-width: 1.8em;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+/* ---------- Seitenumbruch-Baustein ---------- */
+/* Nur ein Hinweis im Baukasten/in der Vorschau – beim PDF-Export wird die
+   Zeile gar nicht erst gerastert (collectPrintItems in engine.js). */
+.wb-forced-break {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  color: var(--ink-soft);
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.wb-forced-break::before,
+.wb-forced-break::after {
+  content: "";
+  flex: 1 1 auto;
+  border-top: 2px dashed var(--line);
+}
+/* Im Schülerblatt bleibt die Zeile als Marke für die Seitenaufteilung stehen,
+   ist aber leer – dann darf sie auch keinen Abstand erzeugen. */
+.wb-row.wb-break-only { margin: 0; gap: 0; }
+
+/* ---------- Rechenweg: Schreibfläche unter der Aufgabe ----------
+   Soll nie vom Seitenumbruch zerschnitten werden – halbe Rechnungen auf zwei
+   Seiten sind beim Korrigieren wertlos. */
+.calc-area {
+  margin-top: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.calc-label {
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.calc-area .drawpad-wrap { margin-top: 0; }
+
+/* ---------- Schreiben statt markieren ----------
+   Beim Schreiben mit dem Finger hat der Browser bisher oft eine Textauswahl
+   gestartet: die halbe Aufgabe war blau hinterlegt statt beschrieben. Auf der
+   Fläche und ihrer Werkzeugleiste ist Markieren deshalb abgeschaltet – im
+   übrigen Blatt bleibt es erlaubt, dort will man Text kopieren können. */
+.drawpad-wrap,
+.drawpad-wrap * ,
+.calc-label {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+canvas.drawpad-canvas { cursor: crosshair; }
+canvas.drawpad-canvas.is-erasing { cursor: cell; }
+
+/* Radierer: aktiv sichtbar markiert, sonst rät man, welches Werkzeug greift. */
+.drawpad-toolbar .tool-active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+/* ---------- Rückmeldung pro Lücke ----------
+   Nach „Prüfen" ist an jedem Feld einzeln sichtbar, ob es stimmt – bei
+   Aufgaben mit mehreren Lücken war vorher nur eine Gesamtmeldung zu sehen. */
+.field-input.field-ok,
+select.choice.field-ok {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.field-input.field-bad,
+select.choice.field-bad {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* ---------- Sortier-Aufgabe: Touch-Bedienung ---------- */
+.sort-item {
+  transition: box-shadow 0.15s ease, opacity 0.15s ease, background 0.4s ease;
+}
+.sort-item.dragging {
+  opacity: 0.9;
+  position: relative;
+  z-index: 20;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  border-color: var(--accent-primary);
+}
+.sort-item.just-moved { background: var(--accent-primary-soft); }
+/* Vollwertiges Touch-Ziel: vorher war der Griff nur gut 20 px groß. */
+.sort-handle {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  border-radius: 8px;
+  user-select: none;
+}
+.sort-handle:hover { background: var(--accent-primary-soft); }
+.sort-moves {
+  flex: none;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sort-move {
+  appearance: none;
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 7px;
+  width: 44px;
+  height: 30px;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sort-move:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-soft);
+}
+.sort-move:disabled { opacity: 0.3; cursor: default; }
+
+/* ---------- Nebenrechnungen: größerer, umschaltbarer Block ---------- */
+.scratch-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.scratch-head h3 { margin: 0; }
+.scratch-spacer { flex: 1 1 auto; }
+.scratch-panel .drawpad-canvas { height: 300px; }
+.scratch-panel.big {
+  width: min(1000px, calc(100vw - 24px));
+  right: 12px;
+  bottom: 12px;
+}
+.scratch-panel.big .drawpad-canvas { height: min(62vh, 620px); }
+
+/* ---------- Hinweis nach dem Wiederherstellen von Eingaben ---------- */
+.restore-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--accent-primary-soft);
+  border: 1px solid var(--accent-primary);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+}
+.restore-bar span { flex: 1 1 auto; }
+.linklike {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div id="wbRoot"></div>
+<script>/*
+ * Baukasten – gemeinsame Laufzeit-Engine
+ * Wird sowohl im Baukasten (Live-Vorschau) als auch im exportierten,
+ * eigenständigen Arbeitsblatt verwendet. Rein datengetrieben: kennt keine
+ * konkreten Aufgaben, nur die Baustein-Konfiguration aus dem Projekt-JSON.
+ */
+(function (global) {
+  "use strict";
+
+  /* ---------- kleine Helfer ---------- */
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function getCssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#000000";
+  }
+  function debounce(fn, wait) {
+    var t;
+    return function () {
+      clearTimeout(t);
+      var args = arguments, ctx = this;
+      t = setTimeout(function () { fn.apply(ctx, args); }, wait);
+    };
+  }
+  function parseNum(raw) {
+    if (raw === null || raw === undefined) return NaN;
+    var s = String(raw).trim().toLowerCase();
+    if (s === "") return NaN;
+    s = s.replace(/€/g, "").replace(/\beuro\b/g, "");
+    s = s.replace(/\btagen\b/g, "").replace(/\btage\b/g, "").replace(/\btag\b/g, "");
+    s = s.replace(/%/g, "").replace(/\s+/g, "");
+    if (s.indexOf(",") !== -1 && s.indexOf(".") !== -1) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if (s.indexOf(",") !== -1) {
+      s = s.replace(",", ".");
+    }
+    // Einheit am Ende tolerieren: am Feld steht die richtige Einheit ohnehin
+    // daneben, Schüler tippen sie aber oft trotzdem mit ("2,5 m", "18 cm²").
+    s = s.replace(/[a-zäöüß²³]+$/, "");
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return NaN;
+    return parseFloat(s);
+  }
+  function numEq(a, b, eps) {
+    eps = eps === undefined ? 1e-6 : eps;
+    return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < eps;
+  }
+  function formatEuro(v) { return Math.round(v).toLocaleString("de-DE"); }
+  function formatDE(num, decimals) { return num.toFixed(decimals).replace(".", ","); }
+  // Deterministisch "zufällige" Reihenfolge aus einer Text-Seed (z. B. der
+  // Baustein-id) – dieselbe Sortier-Aufgabe zeigt bei jedem Neu-Rendern
+  // (Vorschau-Refresh, PDF-Export) dieselbe Ausgangsreihenfolge, verschiedene
+  // Bausteine bekommen unterschiedliche Mischungen.
+  function hashStr(s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; }
+    return h;
+  }
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function seededShuffle(arr, seedStr) {
+    var rnd = mulberry32(hashStr(String(seedStr)));
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(rnd() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    // Falls die Mischung zufällig die Originalreihenfolge trifft (bei wenigen
+    // Elementen nicht unwahrscheinlich): einmal fest vertauschen, damit die
+    // Aufgabe nicht bereits gelöst startet.
+    if (a.length > 1 && a.every(function (x, i2) { return x === arr[i2]; })) {
+      var t2 = a[0]; a[0] = a[a.length - 1]; a[a.length - 1] = t2;
+    }
+    return a;
+  }
+  function niceCeil(v) {
+    if (v <= 0) return 1;
+    var exp = Math.floor(Math.log10(v));
+    var base = Math.pow(10, exp);
+    var n = v / base, niceN;
+    if (n <= 1) niceN = 1; else if (n <= 2) niceN = 2; else if (n <= 5) niceN = 5; else niceN = 10;
+    return niceN * base;
+  }
+  function showToast(msg) {
+    var t = el("wbToast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+
+  var redrawCallbacks = [];
+
+  /* ---------- Zeichenfläche ---------- */
+
+  /* Stift oder Finger?
+   *
+   * Beim Schreiben mit dem Finger liegt oft der Handballen auf und es entstehen
+   * Striche, die keiner wollte. Ein harter „nur Stift"-Zwang wäre aber falsch:
+   * wer kein Pencil dabei hat, könnte dann gar nichts mehr aufschreiben.
+   * Deshalb entscheidet das Blatt selbst: Sobald auf der Seite EINMAL mit einem
+   * Stift geschrieben wurde, gilt für alle Flächen Stift-Betrieb – Finger
+   * zeichnen nicht mehr, sondern scrollen (Handballenschutz). Wer nie einen
+   * Stift benutzt, schreibt unverändert mit dem Finger weiter.
+   * stiftModus: "auto" (Voreinstellung) | "stift" (erzwungen) | "alle".
+   */
+  var stiftModus = "auto";
+  var stiftGesehen = false;
+  var alleZeichenflaechen = [];
+  var stiftHinweisGezeigt = false;
+
+  function nurStift() {
+    if (stiftModus === "stift") return true;
+    if (stiftModus === "alle") return false;
+    return stiftGesehen;
+  }
+
+  // Im Stift-Betrieb soll der Finger die Seite scrollen können – dafür muss
+  // touch-action auf der Fläche wieder freigegeben werden.
+  function aktualisiereZeigerverhalten() {
+    var frei = nurStift();
+    for (var i = 0; i < alleZeichenflaechen.length; i++) {
+      alleZeichenflaechen[i].style.touchAction = frei ? "auto" : "none";
+    }
+  }
+
+  function setStiftModus(modus) {
+    stiftModus = (modus === "stift" || modus === "alle") ? modus : "auto";
+    aktualisiereZeigerverhalten();
+  }
+
+  function merkeStift() {
+    if (stiftGesehen) return;
+    stiftGesehen = true;
+    aktualisiereZeigerverhalten();
+  }
+
+  function createDrawPad(canvas) {
+    var ctx = canvas.getContext("2d");
+    var drawing = false, current = null, strokes = [];
+    var color = getCssVar("--ink");
+    var lineWidth = 2.5;
+    var radiert = false;
+    var RADIER_BREITE = 24;
+
+    function resize() {
+      var rect = canvas.getBoundingClientRect();
+      if (rect.width < 1) return;
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      redraw();
+    }
+    function redraw() {
+      var rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      for (var i = 0; i < strokes.length; i++) drawStroke(strokes[i]);
+    }
+    function drawStroke(s) {
+      if (s.points.length < 1) return;
+      // Radierte Striche nehmen weg statt hinzuzufügen. Weil die Fläche
+      // durchsichtig ist, kommt darunter wieder das Karo zum Vorschein.
+      ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
+      ctx.strokeStyle = s.erase ? "rgba(0,0,0,1)" : s.color;
+      ctx.lineWidth = s.width;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(s.points[0].x, s.points[0].y);
+      if (s.points.length === 1) ctx.lineTo(s.points[0].x + 0.1, s.points[0].y + 0.1);
+      for (var i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+    }
+    function posFromEvent(e) {
+      var rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    canvas.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "pen") merkeStift();
+      // Im Stift-Betrieb wird Finger-Eingabe durchgelassen (= die Seite
+      // scrollt), statt einen ungewollten Strich zu hinterlassen.
+      if (e.pointerType !== "pen" && nurStift()) {
+        if (!stiftHinweisGezeigt) {
+          stiftHinweisGezeigt = true;
+          showToast("Zum Schreiben den Stift benutzen – mit dem Finger kannst du scrollen.");
+        }
+        return;
+      }
+      canvas.setPointerCapture(e.pointerId);
+      drawing = true;
+      current = {
+        color: color,
+        width: radiert ? RADIER_BREITE : lineWidth,
+        erase: radiert,
+        points: [posFromEvent(e)]
+      };
+      strokes.push(current);
+      redraw();
+      e.preventDefault();
+    });
+    canvas.addEventListener("pointermove", function (e) {
+      if (!drawing) return;
+      current.points.push(posFromEvent(e));
+      redraw();
+      e.preventDefault();
+    }, { passive: false });
+    function endStroke() { drawing = false; current = null; }
+    canvas.addEventListener("pointerup", endStroke);
+    canvas.addEventListener("pointercancel", endStroke);
+    canvas.addEventListener("pointerleave", function () { if (drawing) endStroke(); });
+
+    requestAnimationFrame(resize);
+
+    var onChange = null;
+    function changed() { if (onChange) { try { onChange(); } catch (e) {} } }
+    canvas.addEventListener("pointerup", changed);
+    canvas.addEventListener("pointercancel", changed);
+
+    alleZeichenflaechen.push(canvas);
+    aktualisiereZeigerverhalten();
+
+    return {
+      setColor: function (c) { color = c; radiert = false; },
+      setWidth: function (w) { lineWidth = w; radiert = false; },
+      setEraser: function (an) { radiert = !!an; },
+      isEraser: function () { return radiert; },
+      undo: function () { strokes.pop(); redraw(); changed(); },
+      clear: function () { strokes = []; redraw(); changed(); },
+      isEmpty: function () { return strokes.length === 0; },
+      resize: resize,
+      // Für das Zwischenspeichern: Striche auslesen und wieder einsetzen.
+      getStrokes: function () { return strokes; },
+      setStrokes: function (arr) {
+        strokes = Array.isArray(arr) ? arr : [];
+        redraw();
+      },
+      setOnChange: function (fn) { onChange = fn; }
+    };
+  }
+
+  function mkToolBtn(label, title, onClick) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-sm btn-ghost";
+    b.textContent = label; if (title) b.title = title;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function wireDrawpad(wrapEl) {
+    var canvas = wrapEl.querySelector("canvas.drawpad-canvas");
+    var toolbar = wrapEl.querySelector(".drawpad-toolbar");
+    if (!canvas || !toolbar) return null;
+    var pad = createDrawPad(canvas);
+    var colors = [
+      { name: "Tinte", v: getCssVar("--ink") },
+      { name: "Blau (Modell A)", v: getCssVar("--accent-linear") },
+      { name: "Orange (Modell B)", v: getCssVar("--accent-exp") },
+      { name: "Rot", v: getCssVar("--danger") }
+    ];
+    colors.forEach(function (c, i) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "color-dot" + (i === 0 ? " active" : "");
+      b.style.background = c.v; b.title = c.name; b.setAttribute("aria-label", c.name);
+      b.addEventListener("click", function () {
+        pad.setColor(c.v);
+        toolbar.querySelectorAll(".color-dot").forEach(function (x) { x.classList.remove("active"); });
+        b.classList.add("active");
+      });
+      toolbar.appendChild(b);
+    });
+    // Stift/Radierer als Paar: was gerade aktiv ist, bleibt sichtbar markiert.
+    // Farben und Strichstärken schalten den Radierer selbst wieder aus, damit
+    // niemand rätselt, warum plötzlich nichts mehr ankommt.
+    var duennBtn = mkToolBtn("Dünn", "Feiner Stift", function () { pad.setWidth(2); zeigeWerkzeug(); });
+    var dickBtn = mkToolBtn("Dick", "Dicker Stift", function () { pad.setWidth(5.5); zeigeWerkzeug(); });
+    var radierBtn = mkToolBtn("Radierer", "Striche wegwischen – nochmal tippen, um weiterzuschreiben", function () {
+      pad.setEraser(!pad.isEraser());
+      zeigeWerkzeug();
+    });
+    radierBtn.classList.add("tool-eraser");
+
+    function zeigeWerkzeug() {
+      var an = pad.isEraser();
+      radierBtn.classList.toggle("tool-active", an);
+      canvas.classList.toggle("is-erasing", an);
+    }
+
+    toolbar.appendChild(duennBtn);
+    toolbar.appendChild(dickBtn);
+    toolbar.appendChild(radierBtn);
+    toolbar.appendChild(mkToolBtn("↺ Rückgängig", "Letzten Strich entfernen", function () { pad.undo(); }));
+    toolbar.appendChild(mkToolBtn("🗑 Löschen", "Alles löschen", function () { pad.clear(); }));
+    // Farbwechsel beendet das Radieren – die Farbknöpfe stehen weiter oben.
+    toolbar.querySelectorAll(".color-dot").forEach(function (b) {
+      b.addEventListener("click", zeigeWerkzeug);
+    });
+    redrawCallbacks.push(pad.resize);
+    // Für das Zwischenspeichern merken, welche Zeichenfläche zu welchem
+    // Canvas gehört – die Striche werden nach einem Neuladen wiederhergestellt.
+    if (canvas.id) {
+      padRegistry[canvas.id] = pad;
+      pad.setOnChange(scheduleSave);
+    }
+    return pad;
+  }
+
+  /* ---------- Parameter-Graph ---------- */
+  function drawGrowthGraph(canvas, opts) {
+    var maxDays = opts.maxDays, series = opts.series;
+    var ctx = canvas.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    if (rect.width < 1) return;
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var W = rect.width, H = rect.height;
+    var padL = 52, padR = 16, padT = 16, padB = 34;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var days = [];
+    for (var n = 0; n <= maxDays; n++) days.push(n);
+    var maxY = 1;
+    var seriesVals = series.map(function (s) {
+      var vals = days.map(function (n) {
+        return s.type === "linear" ? s.a0 + s.param * n : s.a0 * Math.pow(s.param, n);
+      });
+      maxY = Math.max(maxY, Math.max.apply(null, vals));
+      var copy = {}; for (var k in s) copy[k] = s[k];
+      copy.vals = vals;
+      return copy;
+    });
+    var niceMax = niceCeil(maxY);
+
+    var ink = getCssVar("--ink"), inkSoft = getCssVar("--ink-soft");
+    var line = getCssVar("--line"), paperRaised = getCssVar("--paper-raised");
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = paperRaised; ctx.fillRect(0, 0, W, H);
+
+    function xFor(n) { return padL + (n / maxDays) * plotW; }
+    function yFor(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    var ySteps = 5;
+    for (var i = 0; i <= ySteps; i++) {
+      var v = niceMax * i / ySteps, y = yFor(v);
+      ctx.strokeStyle = line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillStyle = inkSoft; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(formatEuro(v), padL - 8, y);
+    }
+    var xTickStep = maxDays <= 8 ? 1 : (maxDays <= 14 ? 2 : 3);
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (var nx = 0; nx <= maxDays; nx += xTickStep) {
+      var x = xFor(nx);
+      ctx.strokeStyle = line;
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB + 4); ctx.stroke();
+      ctx.fillStyle = inkSoft; ctx.fillText(String(nx), x, H - padB + 8);
+    }
+    ctx.fillStyle = inkSoft; ctx.textAlign = "center";
+    ctx.fillText("Tag n", padL + plotW / 2, H - 6);
+    ctx.save();
+    ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Betrag in €", 0, 0);
+    ctx.restore();
+
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
+    ctx.stroke();
+
+    seriesVals.forEach(function (s) {
+      ctx.strokeStyle = s.color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      days.forEach(function (n, i) {
+        var x = xFor(n), y = yFor(s.vals[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = s.color;
+      days.forEach(function (n, i) {
+        var x = xFor(n), y = yFor(s.vals[i]);
+        ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2); ctx.fill();
+      });
+    });
+  }
+
+  /* ---------- Diagramm-Baustein: Balken/Linie/Kreis ----------
+   * opts: { chartType: 'bar'|'line'|'pie', data: [{label,value,color}],
+   *         xLabel, yLabel, unit, showValues }. Farben kommen bereits
+   * aufgelöst (getCssVar) vom Aufrufer, damit diese Funktion themen-
+   * unabhängig bleibt (wie bei drawCoordinatePlane/drawGrowthGraph). */
+  function diagramValueLabel(v, unit) {
+    var s = Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : formatDE(v, 1);
+    return unit ? s + " " + unit : s;
+  }
+  function truncateLabel(s, max) {
+    s = String(s == null ? "" : s);
+    return s.length > max ? s.slice(0, max - 1) + "…" : s;
+  }
+  function drawPieChart(ctx, W, H, data, opts, ink) {
+    var total = data.reduce(function (s, d) { return s + Math.max(0, Number(d.value) || 0); }, 0);
+    if (total <= 0) total = 1;
+    var cx = W / 2, cy = H / 2, r = Math.max(20, Math.min(W, H) / 2 - 14);
+    var startAngle = -Math.PI / 2;
+    data.forEach(function (d) {
+      var val = Math.max(0, Number(d.value) || 0);
+      var angle = (val / total) * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, startAngle, startAngle + angle); ctx.closePath();
+      ctx.fillStyle = d.color || ink;
+      ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = getCssVar("--paper-raised"); ctx.stroke();
+      if (opts.showValues && val > 0 && angle > 0.18) {
+        var midAngle = startAngle + angle / 2;
+        var lx = cx + Math.cos(midAngle) * r * 0.62, ly = cy + Math.sin(midAngle) * r * 0.62;
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = "700 12px 'Karla', sans-serif";
+        ctx.fillText(Math.round((val / total) * 100) + " %", lx, ly);
+      }
+      startAngle += angle;
+    });
+  }
+  function drawDiagram(canvas, opts) {
+    var ctx = canvas.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    if (rect.width < 1) return;
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var W = rect.width, H = rect.height;
+    var ink = getCssVar("--ink"), inkSoft = getCssVar("--ink-soft");
+    var line = getCssVar("--line"), paperRaised = getCssVar("--paper-raised");
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = paperRaised; ctx.fillRect(0, 0, W, H);
+
+    var data = (opts.data || []).filter(function (d) { return d && d.label !== undefined && d.label !== ""; });
+    if (!data.length) return;
+
+    if (opts.chartType === "pie") { drawPieChart(ctx, W, H, data, opts, ink); return; }
+
+    var vals = data.map(function (d) { return Math.max(0, Number(d.value) || 0); });
+    var niceMax = niceCeil(Math.max.apply(null, vals.concat([0])) || 1);
+
+    // Linke Randbreite an die tatsächlich breiteste y-Achsen-Beschriftung
+    // anpassen (Werte + Einheit können deutlich breiter sein als reine
+    // Zahlen, z. B. "7 Schüler") – sonst würde der Text links abgeschnitten.
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    var ySteps = 5;
+    var maxTickW = 0;
+    for (var mi = 0; mi <= ySteps; mi++) {
+      var mw = ctx.measureText(diagramValueLabel(niceMax * mi / ySteps, opts.unit)).width;
+      if (mw > maxTickW) maxTickW = mw;
+    }
+    var padL = Math.max(40, Math.ceil(maxTickW) + 16), padR = 16, padT = 16, padB = 44;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    if (plotW < 10 || plotH < 10) return;
+
+    function xFor(i) { return padL + (i + 0.5) / data.length * plotW; }
+    function yFor(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+    for (var i = 0; i <= ySteps; i++) {
+      var v = niceMax * i / ySteps, y = yFor(v);
+      ctx.strokeStyle = line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillStyle = inkSoft; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(diagramValueLabel(v, opts.unit), padL - 8, y);
+    }
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(W - padR, padT + plotH);
+    ctx.stroke();
+
+    if (opts.chartType === "line") {
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      data.forEach(function (d, i) {
+        var x = xFor(i), y = yFor(Math.max(0, Number(d.value) || 0));
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      data.forEach(function (d, i) {
+        var x = xFor(i), val = Math.max(0, Number(d.value) || 0), y = yFor(val);
+        ctx.fillStyle = d.color || ink;
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+        if (opts.showValues) {
+          ctx.fillStyle = inkSoft; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+          ctx.fillText(diagramValueLabel(val, opts.unit), x, y - 8);
+        }
+      });
+    } else {
+      var barW = Math.max(6, (plotW / data.length) * 0.6);
+      data.forEach(function (d, i) {
+        var x = xFor(i), val = Math.max(0, Number(d.value) || 0), y = yFor(val);
+        ctx.fillStyle = d.color || ink;
+        ctx.fillRect(x - barW / 2, y, barW, (padT + plotH) - y);
+        if (opts.showValues) {
+          ctx.fillStyle = inkSoft; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+          ctx.fillText(diagramValueLabel(val, opts.unit), x, y - 4);
+        }
+      });
+    }
+
+    ctx.fillStyle = inkSoft; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    var maxLabelChars = data.length > 8 ? 6 : (data.length > 5 ? 10 : 16);
+    data.forEach(function (d, i) { ctx.fillText(truncateLabel(d.label, maxLabelChars), xFor(i), padT + plotH + 8); });
+
+    if (opts.xLabel) {
+      ctx.fillStyle = inkSoft; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(opts.xLabel, padL + plotW / 2, H - 14);
+    }
+    if (opts.yLabel) {
+      ctx.save();
+      ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = inkSoft; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(opts.yLabel, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  /* ---------- Sicherer Funktions-Parser (kein eval/Function) ----------
+   * Unterstützt: + - * / ^ (rechtsassoziativ), Klammern, Variable x,
+   * Konstanten pi/e, Funktionen sin/cos/tan/asin/acos/atan/sqrt/abs/exp/
+   * ln/log/round/floor/ceil/sign. Wirft bei ungültiger Eingabe einen Error
+   * mit verständlicher deutscher Meldung; gibt sonst eine Funktion (x)=>y
+   * zurück. */
+  var EXPR_FUNCS = {
+    sin: Math.sin, cos: Math.cos, tan: Math.tan,
+    asin: Math.asin, acos: Math.acos, atan: Math.atan,
+    sqrt: Math.sqrt, abs: Math.abs, exp: Math.exp,
+    ln: Math.log, log: Math.log10, log10: Math.log10,
+    round: Math.round, floor: Math.floor, ceil: Math.ceil, sign: Math.sign
+  };
+  var EXPR_CONSTS = { pi: Math.PI, e: Math.E };
+
+  function tokenizeExpr(str) {
+    var tokens = [], i = 0, n = str.length;
+    while (i < n) {
+      var c = str[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        var j = i;
+        while (j < n && /[0-9.]/.test(str[j])) j++;
+        tokens.push({ type: "NUM", value: str.slice(i, j) });
+        i = j; continue;
+      }
+      if (/[A-Za-z]/.test(c)) {
+        var k = i;
+        while (k < n && /[A-Za-z0-9]/.test(str[k])) k++;
+        tokens.push({ type: "IDENT", value: str.slice(i, k) });
+        i = k; continue;
+      }
+      if ("+-*/^()".indexOf(c) !== -1) { tokens.push({ type: "OP", value: c }); i++; continue; }
+      throw new Error("unerwartetes Zeichen „" + c + "“");
+    }
+    return tokens;
+  }
+
+  function compileExpr(str) {
+    var tokens = tokenizeExpr(String(str == null ? "" : str).trim());
+    if (!tokens.length) throw new Error("leerer Ausdruck");
+    var pos = 0;
+    function peek() { return tokens[pos]; }
+    function next() { return tokens[pos++]; }
+    function expect(val) {
+      var t = next();
+      if (!t || t.value !== val) throw new Error("„" + val + "“ erwartet");
+    }
+    function parseExpression() {
+      var left = parseTerm();
+      while (peek() && (peek().value === "+" || peek().value === "-")) {
+        var op = next().value, right = parseTerm();
+        left = (function (l, r, op) {
+          return op === "+" ? function (x) { return l(x) + r(x); } : function (x) { return l(x) - r(x); };
+        })(left, right, op);
+      }
+      return left;
+    }
+    function parseTerm() {
+      var left = parseUnary();
+      while (peek() && (peek().value === "*" || peek().value === "/")) {
+        var op = next().value, right = parseUnary();
+        left = (function (l, r, op) {
+          return op === "*" ? function (x) { return l(x) * r(x); } : function (x) { return l(x) / r(x); };
+        })(left, right, op);
+      }
+      return left;
+    }
+    function parseUnary() {
+      if (peek() && peek().value === "-") { next(); var v = parseUnary(); return function (x) { return -v(x); }; }
+      if (peek() && peek().value === "+") { next(); return parseUnary(); }
+      return parsePower();
+    }
+    function parsePower() {
+      var base = parsePrimary();
+      if (peek() && peek().value === "^") {
+        next();
+        var exp = parseUnary();
+        return function (x) { return Math.pow(base(x), exp(x)); };
+      }
+      return base;
+    }
+    function parsePrimary() {
+      var t = peek();
+      if (!t) throw new Error("unerwartetes Ende des Ausdrucks");
+      if (t.type === "NUM") {
+        next();
+        var v = parseFloat(t.value);
+        if (!isFinite(v)) throw new Error("ungültige Zahl „" + t.value + "“");
+        return function () { return v; };
+      }
+      if (t.type === "IDENT") {
+        var name = t.value.toLowerCase();
+        next();
+        if (peek() && peek().value === "(") {
+          next();
+          if (!EXPR_FUNCS.hasOwnProperty(name)) throw new Error("unbekannte Funktion „" + name + "“");
+          var arg = parseExpression();
+          expect(")");
+          var fn = EXPR_FUNCS[name];
+          return function (x) { return fn(arg(x)); };
+        }
+        if (name === "x") return function (x) { return x; };
+        if (EXPR_CONSTS.hasOwnProperty(name)) { var cv = EXPR_CONSTS[name]; return function () { return cv; }; }
+        throw new Error("unbekannter Bezeichner „" + name + "“");
+      }
+      if (t.value === "(") {
+        next();
+        var e = parseExpression();
+        expect(")");
+        return e;
+      }
+      throw new Error("unerwartetes Zeichen „" + t.value + "“");
+    }
+    var result = parseExpression();
+    if (pos !== tokens.length) throw new Error("unerwartete Zeichen am Ende");
+    return result;
+  }
+
+  /* ---------- Koordinatensystem mit Funktionsgraphen ---------- */
+  function formatTick(v) {
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+    var s = v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    return s.replace(".", ",");
+  }
+  function drawArrowHead(ctx, x, y, dir, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (dir === "right") { ctx.moveTo(x + 8, y); ctx.lineTo(x - 3, y - 4.5); ctx.lineTo(x - 3, y + 4.5); }
+    else { ctx.moveTo(x, y - 8); ctx.lineTo(x - 4.5, y + 3); ctx.lineTo(x + 4.5, y + 3); }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCoordinatePlane(canvas, opts) {
+    var ctx = canvas.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var pad = 38;
+
+    var xMin = Math.min(opts.xMin, opts.xMax - 0.001), xMax = Math.max(opts.xMax, opts.xMin + 0.001);
+    var yMin = Math.min(opts.yMin, opts.yMax - 0.001), yMax = Math.max(opts.yMax, opts.yMin + 0.001);
+    var xStep = opts.xStep > 0 ? opts.xStep : (xMax - xMin) / 10 || 1;
+    var yStep = opts.yStep > 0 ? opts.yStep : (yMax - yMin) / 10 || 1;
+
+    // Die Höhe wird passend zur (vom Layout vorgegebenen) Breite berechnet,
+    // damit die Gitterkästchen quadratisch sind UND die volle Breite ausfüllen
+    // (kein Leerraum links/rechts wie beim reinen Zentrieren in fester Höhe).
+    var startRect = canvas.getBoundingClientRect();
+    if (startRect.width < 1) return;
+    var availW = Math.max(10, startRect.width - 2 * pad);
+    var wantedAvailH = availW * (yMax - yMin) / (xMax - xMin);
+    wantedAvailH = Math.max(120, Math.min(wantedAvailH, 900));
+    canvas.style.height = (wantedAvailH + 2 * pad) + "px";
+
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var W = rect.width, H = rect.height;
+    var availH = H - 2 * pad;
+    if (availW < 10 || availH < 10) return;
+
+    // Gleicher Maßstab auf x- und y-Achse (Höhe wurde oben bereits passend zur
+    // Breite gewählt, dieser Schritt fängt nur Rundungsdifferenzen ab).
+    var scale = Math.min(availW / (xMax - xMin), availH / (yMax - yMin));
+    var plotW = scale * (xMax - xMin), plotH = scale * (yMax - yMin);
+    var offX = pad + (availW - plotW) / 2, offY = pad + (availH - plotH) / 2;
+
+    function X(vx) { return offX + (vx - xMin) * scale; }
+    function Y(vy) { return offY + plotH - (vy - yMin) * scale; }
+
+    var ink = getCssVar("--ink"), inkSoft = getCssVar("--ink-soft"), line = getCssVar("--line"), paperRaised = getCssVar("--paper-raised");
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = paperRaised; ctx.fillRect(0, 0, W, H);
+
+    // Gitterlinien
+    ctx.strokeStyle = line; ctx.lineWidth = 1;
+    var gx;
+    for (gx = Math.ceil(xMin / xStep) * xStep; gx <= xMax + 1e-9; gx += xStep) {
+      var px = X(gx);
+      ctx.beginPath(); ctx.moveTo(px, offY); ctx.lineTo(px, offY + plotH); ctx.stroke();
+    }
+    var gy;
+    for (gy = Math.ceil(yMin / yStep) * yStep; gy <= yMax + 1e-9; gy += yStep) {
+      var py = Y(gy);
+      ctx.beginPath(); ctx.moveTo(offX, py); ctx.lineTo(offX + plotW, py); ctx.stroke();
+    }
+
+    // Achsen (bei x=0 / y=0, sonst an den Rand geschoben, falls 0 außerhalb liegt)
+    var axisX = (0 >= xMin && 0 <= xMax) ? X(0) : (0 < xMin ? offX : offX + plotW);
+    var axisY = (0 >= yMin && 0 <= yMax) ? Y(0) : (0 < yMin ? offY + plotH : offY);
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(offX, axisY); ctx.lineTo(offX + plotW, axisY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(axisX, offY); ctx.lineTo(axisX, offY + plotH); ctx.stroke();
+    drawArrowHead(ctx, offX + plotW, axisY, "right", ink);
+    drawArrowHead(ctx, axisX, offY, "up", ink);
+
+    // Zahlen an den Gitterlinien
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.fillStyle = inkSoft;
+    ctx.textAlign = "center"; ctx.textBaseline = axisY < offY + plotH - 14 ? "top" : "bottom";
+    for (gx = Math.ceil(xMin / xStep) * xStep; gx <= xMax + 1e-9; gx += xStep) {
+      if (Math.abs(gx) < 1e-9) continue;
+      ctx.fillText(formatTick(gx), X(gx), axisY + (ctx.textBaseline === "top" ? 5 : -5));
+    }
+    ctx.textAlign = axisX > offX + 14 ? "right" : "left"; ctx.textBaseline = "middle";
+    for (gy = Math.ceil(yMin / yStep) * yStep; gy <= yMax + 1e-9; gy += yStep) {
+      if (Math.abs(gy) < 1e-9) continue;
+      ctx.fillText(formatTick(gy), axisX + (ctx.textAlign === "right" ? -6 : 6), Y(gy));
+    }
+    ctx.fillText("0", axisX + (ctx.textAlign === "right" ? -6 : 6), axisY + (axisY < offY + plotH - 14 ? 9 : -9));
+
+    // Achsenbeschriftungen – fest im Rand außerhalb des Rasters platziert
+    // (nicht relativ zur Achsenposition), damit sie nie mit den Zahlen an
+    // den Gitterlinien kollidieren, auch wenn die Achse an den Rand rutscht
+    // (z. B. bei einem Definitionsbereich, der die 0 nicht enthält).
+    ctx.font = "600 13px 'Outfit', ui-sans-serif, sans-serif";
+    ctx.fillStyle = ink;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(opts.xLabel || "x", offX + plotW + 6, axisY);
+    ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillText(opts.yLabel || "y", axisX, offY - 8);
+
+    // Funktionsgraphen – auf das Gitter-Rechteck geclippt, damit Kurven, die
+    // steil aus dem sichtbaren Bereich laufen, sauber am Rand enden statt in
+    // die Beschriftung/den Rand darüber hinauszuragen.
+    var yRange = yMax - yMin;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(offX, offY, plotW, plotH);
+    ctx.clip();
+    (opts.functions || []).forEach(function (f) {
+      ctx.strokeStyle = f.color; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      var steps = Math.max(120, Math.round(plotW));
+      var started = false, prevY = null;
+      for (var i = 0; i <= steps; i++) {
+        var vx = xMin + (xMax - xMin) * i / steps;
+        var vy;
+        try { vy = f.fn(vx); } catch (e) { vy = NaN; }
+        if (!isFinite(vy) || vy < yMin - yRange * 2 || vy > yMax + yRange * 2) {
+          started = false; prevY = null; continue;
+        }
+        var px = X(vx), py = Y(vy);
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else if (prevY !== null && Math.abs(vy - prevY) > yRange * 1.5) { ctx.moveTo(px, py); }
+        else { ctx.lineTo(px, py); }
+        prevY = vy;
+      }
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  /* ---------- Fortschritt / Feedback ---------- */
+  function setFeedback(feedbackId, ok, msg) {
+    var fb = el(feedbackId);
+    if (!fb) return;
+    fb.className = "feedback show " + (ok ? "ok" : "bad");
+    fb.textContent = (ok ? "✓ " : "✗ ") + msg;
+  }
+
+  var hintState = {};
+  function wireHintButton(btn, hintAreaId, hints) {
+    var key = hintAreaId;
+    hintState[key] = 0;
+    btn.addEventListener("click", function () {
+      var area = el(hintAreaId);
+      if (!area) return;
+      if (hintState[key] < hints.length) {
+        var p = document.createElement("p");
+        p.textContent = "Tipp " + (hintState[key] + 1) + ": " + hints[hintState[key]];
+        area.appendChild(p);
+        area.classList.add("show");
+        hintState[key]++;
+      }
+      if (hintState[key] >= hints.length) {
+        btn.disabled = true;
+        btn.textContent = "Keine weiteren Tipps";
+      }
+    });
+  }
+
+  function wireRevealButton(btn, targetId) {
+    btn.addEventListener("click", function () {
+      var area = el(targetId);
+      if (!area) return;
+      var showing = area.classList.toggle("show");
+      btn.textContent = showing ? "Musterlösung verbergen" : "Musterlösung anzeigen";
+    });
+  }
+
+  /* ---------- Aufgaben-Prüfung (generisch, feld-basiert) ---------- */
+  function fieldElId(blockId, fieldId) { return "wb-" + blockId + "-f-" + fieldId; }
+
+  // Markiert ein einzelnes Feld grün bzw. rot. Die Markierung verschwindet,
+  // sobald der Schüler das Feld wieder anfasst – sonst bliebe ein rotes Feld
+  // auch dann rot stehen, wenn die Antwort längst korrigiert ist.
+  function markField(e, ok) {
+    e.classList.remove("field-ok", "field-bad");
+    e.classList.add(ok ? "field-ok" : "field-bad");
+    if (!e.dataset.markWired) {
+      e.dataset.markWired = "1";
+      var clear = function () { e.classList.remove("field-ok", "field-bad"); };
+      e.addEventListener("input", clear);
+      e.addEventListener("change", clear);
+    }
+  }
+
+  /* Mehrere zulässige Schreibweisen pro Lücke: im Editor mit Semikolon
+   * getrennt eingeben, z. B. "0,5; 1/2; ein halb". Angenommen wird, wenn die
+   * Eingabe EINER Alternative entspricht – entweder als Zahl (Komma/Punkt und
+   * Einheiten werden dabei wie bisher toleriert) oder als Text (Groß-/
+   * Kleinschreibung und Leerzeichen egal). Die ERSTE Alternative ist die
+   * Musterlösung, die auf dem Lösungsblatt erscheint. */
+  function acceptedValues(f) {
+    return String(f.expected == null ? "" : f.expected)
+      .split(";")
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s !== ""; });
+  }
+
+  function normText(s) {
+    return String(s).toLowerCase().replace(/\s+/g, "").replace(/,/g, ".");
+  }
+
+  function answerMatches(f, eingabe) {
+    if (String(eingabe).trim() === "") return false;
+    var alts = acceptedValues(f);
+    for (var i = 0; i < alts.length; i++) {
+      var a = parseNum(eingabe), b = parseNum(alts[i]);
+      if (numEq(a, b)) return true;
+      if (normText(eingabe) === normText(alts[i])) return true;
+    }
+    return false;
+  }
+
+  function checkFieldsTask(blockId, fields) {
+    var allOk = true, leer = 0, falsch = 0;
+    fields.forEach(function (f) {
+      var e = el(fieldElId(blockId, f.id));
+      if (!e) { allOk = false; return; }
+      var leerFeld = String(e.value).trim() === "";
+      var ok = answerMatches(f, e.value);
+      if (leerFeld) { ok = false; leer++; } else if (!ok) { falsch++; }
+      markField(e, ok);
+      if (!ok) allOk = false;
+    });
+    var msg;
+    if (allOk) {
+      msg = fields.length > 1 ? "Alle Lücken richtig." : "Richtig.";
+    } else if (fields.length > 1) {
+      var teile = [];
+      if (falsch) teile.push(falsch === 1 ? "eine Lücke ist noch falsch" : falsch + " Lücken sind noch falsch");
+      if (leer) teile.push(leer === 1 ? "eine Lücke ist leer" : leer + " Lücken sind leer");
+      msg = "Rot markiert: " + teile.join(", ") + ". Grün markierte Lücken stimmen.";
+    } else {
+      msg = leer ? "Da fehlt noch eine Antwort." : "Noch nicht richtig – schau dir ggf. einen Tipp an.";
+    }
+    setFeedback("wb-" + blockId + "-fb", allOk, msg);
+  }
+
+  /* ---------- Sortier-Aufgabe: Drag&Drop-Umsortieren + Prüfung ----------
+   * Rein DOM-basiert: jedes .sort-item trägt in data-key den Index, den es
+   * in der KORREKTEN Reihenfolge hat (vergeben beim Rendern, siehe
+   * registry.js sortTask). Prüfen liest einfach die aktuelle DOM-Reihenfolge
+   * aus – funktioniert unabhängig davon, wie oft/wie umsortiert wurde, und
+   * genau das erscheint auch in einem PDF-Export (Momentaufnahme). */
+  /* ---------- Eingaben auf dem Gerät zwischenspeichern ----------
+   * Ein versehentliches Neuladen – auf dem Tablet schnell passiert – hat
+   * bisher alles gelöscht. Eingaben, Sortierreihenfolge und Zeichnungen
+   * liegen jetzt im localStorage DES GERÄTS. Nichts wird gesendet, nichts
+   * verlässt das Tablet, es gibt keinerlei Auswertung.
+   * Bewusst NICHT gespeichert: die Prüf-Rückmeldungen – nach dem Neuladen
+   * soll man selbst noch einmal auf „Prüfen" tippen. */
+  var padRegistry = {};
+  var autosaveKey = null;
+  var autosaveTimer = null;
+
+  function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function storeDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function collectState(mitZeichnungen) {
+    var s = { v: 1, fields: {}, sort: {}, pads: {} };
+    Array.prototype.forEach.call(document.querySelectorAll(".field-input, select.choice"), function (e) {
+      if (e.id && String(e.value) !== "") s.fields[e.id] = e.value;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".sort-list[id]"), function (c) {
+      s.sort[c.id] = Array.prototype.map.call(c.querySelectorAll(".sort-item"), function (it) {
+        return it.dataset.key;
+      });
+    });
+    if (mitZeichnungen !== false) {
+      Object.keys(padRegistry).forEach(function (id) {
+        var st = padRegistry[id].getStrokes();
+        if (st && st.length) s.pads[id] = st;
+      });
+    }
+    return s;
+  }
+
+  function applyState(s) {
+    if (!s || s.v !== 1) return false;
+    var etwas = false;
+    Object.keys(s.fields || {}).forEach(function (id) {
+      var e = el(id);
+      if (e) { e.value = s.fields[id]; etwas = true; }
+    });
+    Object.keys(s.sort || {}).forEach(function (cid) {
+      var c = el(cid);
+      if (!c) return;
+      (s.sort[cid] || []).forEach(function (k) {
+        var it = c.querySelector('.sort-item[data-key="' + k + '"]');
+        if (it) { c.appendChild(it); etwas = true; }
+      });
+      updateSortButtons(c);
+    });
+    Object.keys(s.pads || {}).forEach(function (id) {
+      var pad = padRegistry[id];
+      if (pad) { pad.setStrokes(s.pads[id]); etwas = true; }
+    });
+    return etwas;
+  }
+
+  function saveNow() {
+    if (!autosaveKey) return;
+    try {
+      var json = JSON.stringify(collectState(true));
+      // Zeichnungen können groß werden; notfalls lieber die Eingaben retten.
+      if (json.length > 2000000) json = JSON.stringify(collectState(false));
+      storeSet(autosaveKey, json);
+    } catch (e) {}
+  }
+
+  function scheduleSave() {
+    if (!autosaveKey) return;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(saveNow, 400);
+  }
+
+  function clearSaved() {
+    if (autosaveKey) storeDel(autosaveKey);
+    // Schlüssel abschalten und laufende Speicherung abbrechen: sonst schreibt
+    // der pagehide-/beforeunload-Haken beim Neuladen sofort alles zurück und
+    // „Neu anfangen" hätte keine Wirkung.
+    autosaveKey = null;
+    clearTimeout(autosaveTimer);
+    location.reload();
+  }
+
+  function mkResetBtn(text, frage, cls) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = text;
+    b.addEventListener("click", function () {
+      if (confirm(frage)) clearSaved();
+    });
+    return b;
+  }
+
+  function showRestoreBar() {
+    var root = el("wbWorksheet");
+    if (!root) return;
+    var bar = document.createElement("div");
+    bar.className = "restore-bar no-print";
+    var txt = document.createElement("span");
+    txt.textContent = "Deine Eingaben von vorhin wurden wiederhergestellt.";
+    bar.appendChild(txt);
+    bar.appendChild(mkResetBtn("Neu anfangen",
+      "Alle deine Eingaben auf diesem Blatt löschen und neu anfangen?", "btn btn-ghost btn-sm"));
+    root.insertBefore(bar, root.firstChild);
+  }
+
+  function wireAutosave(project) {
+    // Auf dem Lösungsblatt gibt es nichts zu retten, und in der Live-Vorschau
+    // des Baukastens würde Zwischenspeichern nur die Ansicht der Lehrkraft
+    // mit alten Probe-Eingaben verunreinigen.
+    if (!project || project.solutionMode || project.previewMode) return;
+    if (!storeSet("wb-test", "1")) return;   // z. B. privater Modus
+    storeDel("wb-test");
+    autosaveKey = "baukasten:" + ((project.meta && project.meta.filename) || "arbeitsblatt");
+
+    var raw = storeGet(autosaveKey), wieder = false;
+    if (raw) { try { wieder = applyState(JSON.parse(raw)); } catch (e) {} }
+
+    document.addEventListener("input", scheduleSave, true);
+    document.addEventListener("change", scheduleSave, true);
+    global.addEventListener("pagehide", saveNow);
+    global.addEventListener("beforeunload", saveNow);
+
+    if (wieder) showRestoreBar();
+    var foot = document.querySelector("footer.appfoot");
+    if (foot) {
+      foot.appendChild(document.createTextNode(" · "));
+      foot.appendChild(mkResetBtn("Eingaben auf diesem Gerät löschen",
+        "Alle deine Eingaben auf diesem Blatt löschen?", "linklike"));
+    }
+  }
+
+  // Ein Element um eine Position nach oben (-1) oder unten (+1) schieben.
+  // Das ist der verlässliche Weg auf Geräten, auf denen Ziehen hakt.
+  function moveSortItem(item, dir) {
+    var container = item.parentNode;
+    if (!container) return;
+    if (dir < 0 && item.previousElementSibling) {
+      container.insertBefore(item, item.previousElementSibling);
+    } else if (dir > 0 && item.nextElementSibling) {
+      container.insertBefore(item.nextElementSibling, item);
+    } else {
+      return;
+    }
+    item.classList.remove("just-moved");
+    void item.offsetWidth;                 // Neustart der Hervorhebung erzwingen
+    item.classList.add("just-moved");
+    updateSortButtons(container);
+    scheduleSave();
+  }
+
+  // Hoch/Runter am jeweiligen Rand ausgrauen, damit sichtbar ist, was geht.
+  function updateSortButtons(container) {
+    var items = Array.prototype.slice.call(container.querySelectorAll(".sort-item"));
+    items.forEach(function (it, i) {
+      var up = it.querySelector("[data-sort-up]"), dn = it.querySelector("[data-sort-down]");
+      if (up) up.disabled = (i === 0);
+      if (dn) dn.disabled = (i === items.length - 1);
+    });
+  }
+
+  /* Umsortieren per Ziehen. Gegenüber der ersten Fassung überarbeitet, weil es
+   * auf Tablets schlecht lief:
+   *  - das gezogene Element folgt jetzt sichtbar dem Finger (vorher bewegte
+   *    sich nichts, man sah nur eine Markierung und hielt es für kaputt),
+   *  - die Seite scrollt automatisch mit, wenn man an den Bildschirmrand zieht,
+   *  - der Ziehgriff ist ein vollwertiges Touch-Ziel (siehe worksheet.css),
+   *  - und über die Hoch/Runter-Knöpfe geht alles auch ganz ohne Ziehen. */
+  function wireSortList(container) {
+    if (!container) return;
+
+    Array.prototype.forEach.call(container.querySelectorAll("[data-sort-up]"), function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        moveSortItem(btn.closest(".sort-item"), -1);
+      });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll("[data-sort-down]"), function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        moveSortItem(btn.closest(".sort-item"), 1);
+      });
+    });
+    updateSortButtons(container);
+
+    var drag = null;
+
+    function clearHighlights() {
+      Array.prototype.forEach.call(container.querySelectorAll(".sort-item"), function (it) {
+        it.classList.remove("drag-over-top", "drag-over-bottom");
+      });
+    }
+
+    function autoScroll(clientY) {
+      var rand = 70;
+      if (clientY < rand) global.scrollBy(0, -Math.max(6, (rand - clientY) / 3));
+      else if (clientY > global.innerHeight - rand) {
+        global.scrollBy(0, Math.max(6, (clientY - (global.innerHeight - rand)) / 3));
+      }
+    }
+
+    Array.prototype.forEach.call(container.querySelectorAll(".sort-item"), function (item) {
+      var handle = item.querySelector(".sort-handle");
+      if (!handle) return;
+
+      handle.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+        drag = { id: e.pointerId, item: item, startY: e.clientY };
+        item.classList.add("dragging");
+      });
+
+      handle.addEventListener("pointermove", function (e) {
+        if (!drag || drag.item !== item || e.pointerId !== drag.id) return;
+        e.preventDefault();
+        item.style.transform = "translateY(" + (e.clientY - drag.startY) + "px)";
+        autoScroll(e.clientY);
+        // Das gezogene Element liegt unter dem Finger – für die Trefferabfrage
+        // kurz durchlässig schalten, sonst trifft elementFromPoint nur es selbst.
+        item.style.pointerEvents = "none";
+        var overEl = document.elementFromPoint(e.clientX, e.clientY);
+        item.style.pointerEvents = "";
+        var overItem = overEl && overEl.closest ? overEl.closest(".sort-item") : null;
+        clearHighlights();
+        if (overItem && overItem !== item && container.contains(overItem)) {
+          var rect = overItem.getBoundingClientRect();
+          var before = (e.clientY - rect.top) < rect.height / 2;
+          overItem.classList.add(before ? "drag-over-top" : "drag-over-bottom");
+          drag.overKey = overItem.dataset.key;
+          drag.before = before;
+        } else {
+          drag.overKey = undefined;
+        }
+      });
+
+      function finish(e) {
+        if (!drag || drag.item !== item || e.pointerId !== drag.id) return;
+        item.classList.remove("dragging");
+        item.style.transform = "";
+        clearHighlights();
+        if (drag.overKey !== undefined) {
+          var overItem = container.querySelector('.sort-item[data-key="' + drag.overKey + '"]');
+          if (overItem && overItem !== item) {
+            if (drag.before) container.insertBefore(item, overItem);
+            else container.insertBefore(item, overItem.nextSibling);
+            updateSortButtons(container);
+            scheduleSave();
+          }
+        }
+        drag = null;
+      }
+      handle.addEventListener("pointerup", finish);
+      handle.addEventListener("pointercancel", finish);
+    });
+  }
+
+  function checkSortTask(uid) {
+    var container = el("wb-" + uid + "-sort");
+    if (!container) return;
+    var items = Array.prototype.slice.call(container.querySelectorAll(".sort-item"));
+    var ok = items.length > 0 && items.every(function (it, i) { return Number(it.dataset.key) === i; });
+    setFeedback("wb-" + uid + "-fb", ok, ok ? "Richtig einsortiert." : "Noch nicht in der richtigen Reihenfolge – vertausche zwei Elemente.");
+  }
+
+  /* ---------- Vorlagen-Rendering ({{id}} -> Eingabefeld) ---------- */
+  function renderTemplate(template, fields, blockId) {
+    var byId = {};
+    (fields || []).forEach(function (f) { byId[f.id] = f; });
+    return String(template || "").replace(/\{\{(\w+)\}\}/g, function (m, id) {
+      var f = byId[id];
+      if (!f) return m;
+      var elId = fieldElId(blockId, id);
+      if (f.type === "choice") {
+        var opts = (f.options || []).map(function (o) {
+          return '<option value="' + esc(o.value) + '">' + esc(o.label) + "</option>";
+        }).join("");
+        return '<select class="choice" id="' + elId + '"><option value="">wähle…</option>' + opts + "</select>";
+      }
+      // Ohne ausdrücklich gesetzte Breite richtet sich das Feld nach der Länge
+      // des erwarteten Werts – so muss man die Breite nie von Hand einstellen,
+      // ältere Projekte mit explizitem width behalten aber ihren Wert.
+      var ersteAlt = String(f.expected == null ? "" : f.expected).split(";")[0].trim();
+      var width = f.width || Math.max(64, Math.min(230, ersteAlt.length * 11 + 40));
+      return '<input type="text" inputmode="decimal" class="field-input" style="width:' + width + 'px;" id="' + elId + '">' +
+        (f.unit ? '<span class="fu-label">' + esc(f.unit) + "</span>" : "");
+    });
+  }
+
+  // Lösungsblatt-Variante derselben Vorlage: statt leerer Eingabefelder wird
+  // der erwartete Wert direkt als hervorgehobener Text eingesetzt (bei
+  // Auswahlfeldern das LABEL der richtigen Option, nicht deren technischer
+  // Wert – im Schülerblatt sieht man ja auch nur die Labels).
+  function renderTemplateSolution(template, fields) {
+    var byId = {};
+    (fields || []).forEach(function (f) { byId[f.id] = f; });
+    return String(template || "").replace(/\{\{(\w+)\}\}/g, function (m, id) {
+      var f = byId[id];
+      if (!f) return m;
+      var txt;
+      var erste = acceptedValues(f)[0];
+      if (erste === undefined) erste = "";
+      if (f.type === "choice") {
+        var hit = (f.options || []).filter(function (o) { return String(o.value) === String(erste); })[0];
+        txt = hit ? hit.label : String(erste);
+      } else {
+        // Deutsche Schreibweise: Dezimalkomma und typografisches Minus (U+2212).
+        txt = String(erste).replace(".", ",").replace(/^-/, "−");
+      }
+      return '<span class="field-solution">' + esc(txt) + "</span>" +
+        (f.unit ? '<span class="fu-label">' + esc(f.unit) + "</span>" : "");
+    });
+  }
+
+  /* ---------- PDF-Export: generische, blockweise Paginierung ---------- */
+  // A4 in PDF-Punkten (1pt = 1/72 Zoll) sowie die im Export verwendeten Ränder/
+  // Abstände – identisch zu den Werten in exportPdf() weiter unten. Wird hier
+  // zusätzlich als reine Konstante gehalten, damit der Seitenumbruch-Schätzer
+  // (computePageBreakOffsets) ohne jsPDF-Instanz auskommt.
+  var PDF_LAYOUT = { marginX: 26, marginY: 26, gap: 10, pageW: 595.28, pageH: 841.89 };
+
+  // Reine, messungsbasierte Nachbildung der Paginierungs-Entscheidungen aus
+  // exportPdf() weiter unten (bewusst dupliziert statt geteilt, damit am
+  // bereits getesteten PDF-Export nichts verändert wird – bei Änderungen an
+  // der Paginierungslogik dort bitte auch hier nachziehen).
+  // heights: Array von Höhen (in pt) je Baustein/Zeile; keepFlags: paralleles
+  // Array von keepWithNext-Flags; forceFlags: paralleles Array – true heißt
+  // „vor diesem Baustein einen Seitenumbruch erzwingen" (Seitenumbruch-
+  // Baustein). Gibt eine Liste von Umbruch-Punkten zurück:
+  // { itemIndex, offset } – ein Seitenumbruch fällt vor Baustein itemIndex,
+  // offset pt von dessen Oberkante entfernt (>0 nur bei überlangen, in
+  // mehrere Seiten zerschnittenen Bausteinen).
+  function computePagination(heights, keepFlags, forceFlags, layout) {
+    layout = layout || PDF_LAYOUT;
+    var marginY = layout.marginY, gap = layout.gap;
+    var usableH = layout.pageH - 2 * marginY;
+    var n = heights.length;
+    var breaks = [];
+    var cursorY = marginY, isPageEmpty = true;
+    for (var i = 0; i < n; i++) {
+      var imgH = heights[i];
+      if (forceFlags && forceFlags[i] && !isPageEmpty) {
+        breaks.push({ itemIndex: i, offset: 0 });
+        cursorY = marginY; isPageEmpty = true;
+      }
+      if (imgH > usableH + 0.5) {
+        if (!isPageEmpty) { breaks.push({ itemIndex: i, offset: 0 }); cursorY = marginY; isPageEmpty = true; }
+        var renderedH = 0, first = true, lastSliceH = 0;
+        while (renderedH < imgH - 0.5) {
+          if (!first) breaks.push({ itemIndex: i, offset: renderedH });
+          var sliceH = Math.min(usableH, imgH - renderedH);
+          renderedH += sliceH; lastSliceH = sliceH; first = false;
+        }
+        cursorY = marginY + lastSliceH + gap;
+        isPageEmpty = false;
+        continue;
+      }
+      var minNeeded = imgH;
+      var keepsWithNext = keepFlags[i] && (i + 1 < n) && heights[i + 1] <= usableH + 0.5;
+      if (keepsWithNext) minNeeded = imgH + gap + heights[i + 1];
+      var fits = isPageEmpty || (cursorY + minNeeded <= marginY + usableH);
+      if (!fits && minNeeded > usableH + 0.5) fits = cursorY + imgH <= marginY + usableH;
+      if (!fits) { breaks.push({ itemIndex: i, offset: 0 }); cursorY = marginY; isPageEmpty = true; }
+      cursorY += imgH + gap; isPageEmpty = false;
+    }
+    return breaks;
+  }
+
+  // Misst die aktuell gerenderten Bausteine/Zeilen im DOM (kein html2canvas –
+  // rein getBoundingClientRect) und rechnet ihre On-Screen-Pixelhöhen über
+  // einen konstanten Skalierungsfaktor (PDF-nutzbare Breite ÷ On-Screen-
+  // Breite) in PDF-Punkte um. Damit lässt sich dieselbe Paginierung wie beim
+  // echten Export "live" schätzen, ohne dass gerastert werden muss.
+  function computePageBreakOffsets(rootId) {
+    var root = el(rootId);
+    if (!root) return [];
+    var printItems = collectPrintItems(rootId);
+    if (!printItems.length) return [];
+    var containerRect = root.getBoundingClientRect();
+    var onScreenW = containerRect.width;
+    if (onScreenW < 1) return [];
+    var usableW = PDF_LAYOUT.pageW - 2 * PDF_LAYOUT.marginX;
+    var k = usableW / onScreenW; // pt pro On-Screen-Pixel
+    var heights = [], keepFlags = [], forceFlags = [], tops = [];
+    printItems.forEach(function (it) {
+      var r = it.el.getBoundingClientRect();
+      heights.push(r.height * k);
+      keepFlags.push(it.keepWithNext);
+      forceFlags.push(it.forceBreak);
+      tops.push(r.top - containerRect.top);
+    });
+    var breaks = computePagination(heights, keepFlags, forceFlags, PDF_LAYOUT);
+    return breaks.map(function (b) {
+      return tops[b.itemIndex] + b.offset / k;
+    });
+  }
+
+  // Blendet gestrichelte Seitenumbruch-Linien (+ "Seite N"-Etikett) direkt in
+  // die Live-Vorschau ein, an genau den Y-Positionen, an denen der PDF-Export
+  // vermutlich eine neue Seite beginnen würde. Rein informativ (no-print),
+  // wird nach jedem Re-Render und bei Resize neu berechnet.
+  function renderPageBreakOverlays(rootId) {
+    var root = el(rootId);
+    if (!root) return;
+    Array.prototype.forEach.call(root.querySelectorAll(":scope > .wb-pagebreak-line"), function (n) { n.remove(); });
+    var offsets = computePageBreakOffsets(rootId);
+    offsets.forEach(function (y, idx) {
+      var line = document.createElement("div");
+      line.className = "wb-pagebreak-line no-print";
+      line.style.top = Math.round(y) + "px";
+      line.innerHTML = '<span class="wb-pagebreak-label">✂ Seite ' + (idx + 2) + "</span>";
+      root.appendChild(line);
+    });
+  }
+
+  function collectPrintBlocks(rootId) {
+    var root = el(rootId);
+    if (!root) return [];
+    // .wb-block direkt unter #wbWorksheet = Header-Karte (immer alleine).
+    // .wb-row = eine Rasterzeile (1 oder mehrere nebeneinanderstehende
+    // Bausteine) – wird als EINE Einheit gerastert, damit nebeneinander
+    // platzierte Bausteine auch im PDF nebeneinander erscheinen.
+    return Array.prototype.slice.call(root.querySelectorAll(":scope > .wb-block, :scope > .wb-row"));
+  }
+
+  // Wandelt die rohen Druckeinheiten in die tatsächlich zu rasternde Liste um.
+  // Eine Zeile, die nur den Seitenumbruch-Baustein enthält (data-force-break),
+  // wird selbst NICHT gerastert – sie setzt stattdessen das forceBreak-Flag
+  // der nachfolgenden Einheit, vor der dann eine neue Seite beginnt.
+  function collectPrintItems(rootId) {
+    var out = [];
+    var pendingBreak = false;
+    collectPrintBlocks(rootId).forEach(function (elm) {
+      if (elm.dataset.forceBreak === "true") { pendingBreak = true; return; }
+      out.push({ el: elm, keepWithNext: elm.dataset.keepWithNext === "true", forceBreak: pendingBreak });
+      pendingBreak = false;
+    });
+    return out;
+  }
+
+  function addSlicedImage(pdf, canvas, x, marginY, imgW, usableH, pageH) {
+    var totalImgH = (canvas.height * imgW) / canvas.width;
+    var pxPerPt = canvas.height / totalImgH;
+    var renderedH = 0, first = true, lastSliceH = 0;
+    while (renderedH < totalImgH - 0.5) {
+      if (!first) pdf.addPage();
+      var availH = first ? usableH : (pageH - 2 * marginY);
+      var sliceH = Math.min(availH, totalImgH - renderedH);
+      var srcY = Math.round(renderedH * pxPerPt);
+      var srcH = Math.round(sliceH * pxPerPt);
+      var sliceCanvas = document.createElement("canvas");
+      sliceCanvas.width = canvas.width; sliceCanvas.height = srcH;
+      sliceCanvas.getContext("2d").drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+      pdf.addImage(sliceCanvas.toDataURL("image/jpeg", 0.92), "JPEG", x, marginY, imgW, sliceH);
+      renderedH += sliceH; lastSliceH = sliceH; first = false;
+    }
+    return lastSliceH;
+  }
+
+  async function offerDownload(blob, filename) {
+    if (global.claude && typeof global.claude.use === "function") {
+      try {
+        var downloads = await global.claude.use("downloads");
+        if (downloads) {
+          await downloads.save({ filename: filename, data: blob });
+          showToast("PDF gespeichert.");
+          return;
+        }
+      } catch (err) {
+        showToast("Speichern hier nicht möglich. Nutze die eigenständige Datei, um zu speichern.");
+        return;
+      }
+    }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    showToast("PDF wird heruntergeladen.");
+  }
+
+  // Baut das PDF und gibt es als Blob zurück, OHNE es herunterzuladen.
+  // Getrennt von exportPdf(), damit auch der Baukasten selbst ein PDF
+  // erzeugen kann (er rendert das Arbeitsblatt in ein verstecktes iframe und
+  // holt sich den Blob hier ab, um ihn über seinen eigenen Download-Pfad zu
+  // speichern – nur der kennt die claude.use("downloads")-Fähigkeit).
+  // Versionen wie die eingebetteten Kopien – bei einem Austausch hier mitziehen.
+  var PDF_CDN = [
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+  ];
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error("Konnte " + src + " nicht laden")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /* jsPDF und html2canvas werden erst beim ersten PDF-Export bereitgestellt –
+   * nie beim bloßen Öffnen des Arbeitsblatts. Zwei Wege, je nach Exportfassung:
+   *  - vollständige Fassung: die Bibliotheken liegen als text/plain-Halter im
+   *    Dokument und werden hier ausgewertet. Funktioniert ohne Internet.
+   *  - schlanke Fassung: die Halter fehlen (Datei ~150 statt ~700 KB), die
+   *    Bibliotheken kommen beim ersten Klick aus dem Netz.
+   * In beiden Fällen bleibt der PDF-Knopf für die Schüler erhalten. */
+  async function ensurePdfLibs() {
+    if (global.jspdf && global.html2canvas) return;
+    ["src-jspdf", "src-html2canvas"].forEach(function (id) {
+      var holder = el(id);
+      if (!holder) return;
+      try { (0, eval)(holder.textContent); } catch (err) { console.error("Lade " + id + ":", err); }
+    });
+    if (global.jspdf && global.html2canvas) return;
+    for (var i = 0; i < PDF_CDN.length; i++) await loadScript(PDF_CDN[i]);
+  }
+
+  async function buildPdfBlob(rootId) {
+    await ensurePdfLibs();
+    if (!global.jspdf || !global.html2canvas) throw new Error("PDF-LIBS");
+    document.body.classList.add("exporting");
+    await new Promise(function (r) { setTimeout(r, 60); });
+    try {
+      var jsPDF = global.jspdf.jsPDF;
+      var pdf = new jsPDF("p", "pt", "a4");
+      var marginX = 26, marginY = 26, gap = 10;
+      var pageW = pdf.internal.pageSize.getWidth();
+      var pageH = pdf.internal.pageSize.getHeight();
+      var usableW = pageW - marginX * 2;
+      var usableH = pageH - marginY * 2;
+      var scale = Math.min(2, global.devicePixelRatio || 1.5);
+
+      var printItems = collectPrintItems(rootId);
+      var items = [];
+      for (var j = 0; j < printItems.length; j++) {
+        var c = await global.html2canvas(printItems[j].el, { scale: scale, backgroundColor: getCssVar("--paper"), useCORS: true });
+        items.push({
+          canvas: c,
+          imgH: (c.height * usableW) / c.width,
+          keepWithNext: printItems[j].keepWithNext,
+          forceBreak: printItems[j].forceBreak
+        });
+      }
+
+      var cursorY = marginY, isPageEmpty = true;
+      for (var i = 0; i < items.length; i++) {
+        var imgH = items[i].imgH, imgW = usableW;
+        if (items[i].forceBreak && !isPageEmpty) { pdf.addPage(); cursorY = marginY; isPageEmpty = true; }
+        if (imgH > usableH + 0.5) {
+          if (!isPageEmpty) { pdf.addPage(); cursorY = marginY; }
+          var lastSliceH = addSlicedImage(pdf, items[i].canvas, marginX, marginY, imgW, usableH, pageH);
+          cursorY = marginY + lastSliceH + gap; isPageEmpty = false;
+          continue;
+        }
+        var minNeeded = imgH;
+        var keepsWithNext = items[i].keepWithNext && (i + 1 < items.length) && items[i + 1].imgH <= usableH + 0.5;
+        if (keepsWithNext) minNeeded = imgH + gap + items[i + 1].imgH;
+        var fits = isPageEmpty || (cursorY + minNeeded <= marginY + usableH);
+        if (!fits && minNeeded > usableH + 0.5) fits = cursorY + imgH <= marginY + usableH;
+        if (!fits) { pdf.addPage(); cursorY = marginY; isPageEmpty = true; }
+        var imgData = items[i].canvas.toDataURL("image/jpeg", 0.92);
+        pdf.addImage(imgData, "JPEG", marginX, cursorY, imgW, imgH);
+        cursorY += imgH + gap; isPageEmpty = false;
+      }
+
+      return pdf.output("blob");
+    } finally {
+      document.body.classList.remove("exporting");
+    }
+  }
+
+  async function exportPdf(rootId, filename, exportBtnId) {
+    var btn = exportBtnId ? el(exportBtnId) : null;
+    if (btn) btn.disabled = true;
+    showToast("Erstelle PDF …");
+    try {
+      var blob = await buildPdfBlob(rootId);
+      await offerDownload(blob, filename || "arbeitsblatt.pdf");
+    } catch (err) {
+      console.error(err);
+      // In der schlanken Fassung kommen die PDF-Bibliotheken aus dem Netz –
+      // ohne Verbindung soll die Meldung sagen, woran es liegt.
+      var netz = /PDF-LIBS|nicht laden/.test(String(err && err.message));
+      showToast(netz
+        ? "Für den PDF-Export wird einmalig eine Internetverbindung gebraucht."
+        : "PDF-Export ist fehlgeschlagen.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  global.WBEngine = {
+    el: el, esc: esc, getCssVar: getCssVar, debounce: debounce,
+    parseNum: parseNum, numEq: numEq, formatEuro: formatEuro, formatDE: formatDE,
+    showToast: showToast, redrawCallbacks: redrawCallbacks,
+    createDrawPad: createDrawPad, wireDrawpad: wireDrawpad,
+    setStiftModus: setStiftModus,
+    drawGrowthGraph: drawGrowthGraph, drawDiagram: drawDiagram,
+    compileExpr: compileExpr, drawCoordinatePlane: drawCoordinatePlane,
+    setFeedback: setFeedback, wireHintButton: wireHintButton, wireRevealButton: wireRevealButton,
+    fieldElId: fieldElId, checkFieldsTask: checkFieldsTask, renderTemplate: renderTemplate,
+    answerMatches: answerMatches, acceptedValues: acceptedValues,
+    renderTemplateSolution: renderTemplateSolution,
+    seededShuffle: seededShuffle, wireSortList: wireSortList, checkSortTask: checkSortTask,
+    moveSortItem: moveSortItem, wireAutosave: wireAutosave,
+    offerDownload: offerDownload, exportPdf: exportPdf, buildPdfBlob: buildPdfBlob,
+    ensurePdfLibs: ensurePdfLibs,
+    computePagination: computePagination, computePageBreakOffsets: computePageBreakOffsets,
+    renderPageBreakOverlays: renderPageBreakOverlays, PDF_LAYOUT: PDF_LAYOUT
+  };
+})(window);
+</script>
+<script>/*
+ * Baukasten – Baustein-Registry + Gesamt-Renderer
+ * Jeder Baustein-Typ ist EIN Eintrag hier. Ein neuer Typ = ein neuer Eintrag
+ * mit render()/editor()/mount() – der Rest der Anwendung (Palette, Vorschau,
+ * Export, Drag&Drop) funktioniert automatisch mit, ohne Änderungen anderswo.
+ */
+(function (global) {
+  "use strict";
+  var E = global.WBEngine;
+
+  function esc(s) { return E.esc(s); }
+
+  function autoParagraph(html) {
+    var s = String(html == null ? "" : html).trim();
+    if (s === "") return "";
+    if (/<(p|div|ul|ol|table|h[1-6])[\s>]/i.test(s)) return s;
+    return s.split(/\n\s*\n/).map(function (chunk) {
+      return "<p>" + chunk.trim().replace(/\n/g, "<br>") + "</p>";
+    }).join("\n");
+  }
+
+  function variantClass(variant) {
+    return variant === "exp" ? "swatch-exp" : (variant === "linear" ? "swatch-linear" : "");
+  }
+
+  function starsHtml(stars) {
+    stars = Math.max(1, Math.min(3, Number(stars) || 1));
+    var filled = "★".repeat(stars), empty = "☆".repeat(3 - stars);
+    return '<span class="difficulty-stars" title="Schwierigkeit ' + stars + ' von 3">' +
+      '<span class="filled">' + filled + "</span>" +
+      (empty ? '<span class="empty">' + empty + "</span>" : "") + "</span>";
+  }
+
+  // Schreibfläche für den Rechenweg unter einer Aufgabe. Bewusst überall
+  // dasselbe Markup (Aufgabe und Sortier-Aufgabe), damit Höhe, Abstände und
+  // Seitenumbruch-Verhalten identisch sind. Die Beschriftung wird mitgedruckt:
+  // auf Papier soll erkennbar sein, wofür der Kasten da ist.
+  var CALC_HEIGHT = 300;
+
+  function calcAreaHtml(uid, hoehe) {
+    return '<div class="calc-area">' +
+      '<div class="calc-label">Rechenweg</div>' +
+      '<div class="drawpad-wrap"><div class="drawpad-toolbar no-print"></div>' +
+      '<canvas class="drawpad-canvas" id="wb-' + uid + '-pad" style="height:' +
+      (Number(hoehe) || CALC_HEIGHT) + 'px;"></canvas></div></div>';
+  }
+
+  function mountCalcArea(uid) {
+    var canvas = E.el("wb-" + uid + "-pad");
+    if (canvas) E.wireDrawpad(canvas.closest(".drawpad-wrap"));
+  }
+
+  function uniqueId(prefix) {
+    return prefix + "_" + Math.random().toString(36).slice(2, 9);
+  }
+
+  // Farbpalette für Funktionsgraphen im Koordinatensystem – feste Namen,
+  // die auf vorhandene Theme-Variablen zeigen (passen sich automatisch an
+  // Hell/Dunkel an).
+  var COORD_COLORS = [
+    { value: "primary", label: "Blau", cssVar: "--accent-primary" },
+    { value: "linear", label: "Türkis", cssVar: "--accent-linear" },
+    { value: "exp", label: "Orange", cssVar: "--accent-exp" },
+    { value: "success", label: "Grün", cssVar: "--success" },
+    { value: "danger", label: "Rot", cssVar: "--danger" },
+    { value: "ink", label: "Schwarz/Grau", cssVar: "--ink" }
+  ];
+  function coordColorVar(value) {
+    var found = COORD_COLORS.filter(function (c) { return c.value === value; })[0];
+    return (found || COORD_COLORS[0]).cssVar;
+  }
+
+  /* ================= Editor-Hilfsfunktionen ================= */
+  function field(labelText, inputEl) {
+    var wrap = document.createElement("label");
+    wrap.className = "ed-field";
+    var span = document.createElement("span");
+    span.className = "ed-label";
+    span.textContent = labelText;
+    wrap.appendChild(span);
+    wrap.appendChild(inputEl);
+    return wrap;
+  }
+  function textInput(value, onChange, placeholder) {
+    var i = document.createElement("input");
+    i.type = "text"; i.value = value || ""; if (placeholder) i.placeholder = placeholder;
+    i.addEventListener("input", function () { onChange(i.value); });
+    return i;
+  }
+  function numberInput(value, onChange, opts) {
+    opts = opts || {};
+    var i = document.createElement("input");
+    i.type = "number"; i.value = value === undefined || value === null ? "" : value;
+    if (opts.step !== undefined) i.step = opts.step;
+    if (opts.min !== undefined) i.min = opts.min;
+    if (opts.max !== undefined) i.max = opts.max;
+    i.addEventListener("input", function () { onChange(i.value === "" ? undefined : Number(i.value)); });
+    return i;
+  }
+  function textArea(value, onChange, rows) {
+    var t = document.createElement("textarea");
+    t.rows = rows || 3; t.value = value || "";
+    t.addEventListener("input", function () { onChange(t.value); });
+    return t;
+  }
+  function selectInput(value, options, onChange) {
+    var s = document.createElement("select");
+    options.forEach(function (o) {
+      var op = document.createElement("option");
+      op.value = o.value; op.textContent = o.label;
+      if (o.value === value) op.selected = true;
+      s.appendChild(op);
+    });
+    s.addEventListener("change", function () { onChange(s.value); });
+    return s;
+  }
+  function checkboxInput(checked, onChange, labelText) {
+    var wrap = document.createElement("label");
+    wrap.className = "ed-checkbox";
+    var c = document.createElement("input");
+    c.type = "checkbox"; c.checked = !!checked;
+    c.addEventListener("change", function () { onChange(c.checked); });
+    wrap.appendChild(c);
+    wrap.appendChild(document.createTextNode(" " + labelText));
+    return wrap;
+  }
+  function fileInput(accept, onFile) {
+    var i = document.createElement("input");
+    i.type = "file"; if (accept) i.accept = accept;
+    i.addEventListener("change", function () {
+      if (i.files && i.files[0]) onFile(i.files[0]);
+      i.value = "";
+    });
+    return i;
+  }
+  // Liest eine Bilddatei ein, verkleinert sie client-seitig auf eine sinnvolle
+  // maximale Kantenlänge und liefert sie als eingebettete data-URL zurück –
+  // damit Fotos aus dem Handy die exportierte Datei nicht unnötig aufblähen.
+  // SVGs werden unverändert (als Vektor) eingebettet.
+  function readImageFile(file, callback) {
+    if (file.type === "image/svg+xml") {
+      var r = new FileReader();
+      r.onload = function () { callback(null, String(r.result)); };
+      r.onerror = function () { callback(new Error("Datei konnte nicht gelesen werden.")); };
+      r.readAsDataURL(file);
+      return;
+    }
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var maxDim = 1400;
+      var scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      var w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+      var canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      var isPng = file.type === "image/png";
+      var dataUrl = isPng ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.85);
+      callback(null, dataUrl);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); callback(new Error("Bild konnte nicht geladen werden.")); };
+    img.src = url;
+  }
+
+  // Mathe-Symbole direkt einfügen: eine kompakte Leiste anklickbarer Zeichen
+  // unter einem Text-/Textarea-Feld, die an der aktuellen Cursorposition
+  // einfügen (statt Sonderzeichen-Tastatur/Copy-Paste). NICHT an geparsten/
+  // technischen Feldern verwenden (z. B. Funktionsterm im Koordinatensystem –
+  // der Parser erwartet "pi"/"sqrt(x)", kein π/√; numerische erwartete Werte).
+  var MATH_SYMBOLS = [
+    "²", "³", "√", "π", "±", "×", "÷", "≈", "≠", "≤", "≥",
+    "∞", "°", "∠", "△", "⊥", "∥", "→", "⇒", "∈", "∅", "Σ", "·", "‰", "½", "¼"
+  ];
+  function insertAtCursor(el, text) {
+    el.focus();
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    var val = el.value;
+    el.value = val.slice(0, start) + text + val.slice(end);
+    var pos = start + text.length;
+    if (el.setSelectionRange) el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  function mkSymbolToolbar(targetEl) {
+    var bar = document.createElement("div");
+    bar.className = "ed-symbol-bar";
+    MATH_SYMBOLS.forEach(function (sym) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "ed-symbol-btn"; b.textContent = sym;
+      b.title = "„" + sym + "“ einfügen";
+      b.addEventListener("click", function (e) {
+        e.preventDefault();
+        insertAtCursor(targetEl, sym);
+      });
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+  // Umschließt ein von textInput()/textArea() erzeugtes Feld mit der
+  // Symbol-Leiste. Gibt einen Container zurück, der sich genau wie das
+  // ursprüngliche Element in field(...) einsetzen lässt.
+  // Kurze, sprechende id für eine neue Lücke: erst a, b, c … dann f1, f2 …
+  // (der Nutzer soll ids nie selbst tippen müssen – der „Lücke einfügen“-
+  // Knopf im Aufgaben-Editor legt Platzhalter und Feld gemeinsam an).
+  function nextFieldId(fields) {
+    var used = {};
+    (fields || []).forEach(function (f) { used[f.id] = true; });
+    var alpha = "abcdefghijklmnopqrstuvwxyz";
+    for (var i = 0; i < alpha.length; i++) { if (!used[alpha[i]]) return alpha[i]; }
+    var n = 1;
+    while (used["f" + n]) n++;
+    return "f" + n;
+  }
+
+  function withSymbols(inputEl) {
+    var wrap = document.createElement("div");
+    wrap.className = "ed-symbols-wrap";
+    wrap.appendChild(inputEl);
+    wrap.appendChild(mkSymbolToolbar(inputEl));
+    return wrap;
+  }
+
+  // Generische wiederholbare Liste (für hints[], fields[], series[], rows[] ...)
+  function listEditor(items, opts) {
+    // opts: {addLabel, newItem(), renderRow(item, i, updateItem, removeItem)}
+    var wrap = document.createElement("div");
+    wrap.className = "ed-list";
+    function redraw() {
+      wrap.innerHTML = "";
+      items.forEach(function (item, i) {
+        var row = document.createElement("div");
+        row.className = "ed-list-row";
+        row.appendChild(opts.renderRow(item, i,
+          function (partial) { Object.assign(item, partial); opts.onChange(items); },
+          function () { items.splice(i, 1); opts.onChange(items); redraw(); }
+        ));
+        wrap.appendChild(row);
+      });
+      var addBtn = document.createElement("button");
+      addBtn.type = "button"; addBtn.className = "btn btn-sm btn-ghost";
+      addBtn.textContent = "+ " + (opts.addLabel || "Hinzufügen");
+      addBtn.addEventListener("click", function () {
+        items.push(opts.newItem());
+        opts.onChange(items);
+        redraw();
+      });
+      wrap.appendChild(addBtn);
+    }
+    redraw();
+    return wrap;
+  }
+
+  /* ================= Block-Registry ================= */
+  var Registry = {
+
+    phaseHeading: {
+      label: "Phasen-Überschrift", icon: "🏷️", group: "struktur",
+      noCard: true, keepWithNext: true,
+      defaultConfig: function () { return { tag: "Einstieg", title: "Neuer Abschnitt" }; },
+      render: function (c) {
+        return '<div class="phase-eyebrow"><span class="tag">' + esc(c.tag) + "</span></div><h2>" + esc(c.title) + "</h2>";
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Phase (z. B. Einstieg, Übung)", textInput(c.tag, function (v) { api.update({ tag: v }); })));
+        d.appendChild(field("Überschrift", withSymbols(textInput(c.title, function (v) { api.update({ title: v }); }))));
+        return d;
+      }
+    },
+
+    // Erzwingt im PDF-Export einen Seitenumbruch an dieser Stelle. Wird selbst
+    // nie mitgedruckt: collectPrintItems() in engine.js überspringt die Zeile
+    // und setzt stattdessen das forceBreak-Flag der nachfolgenden Druckeinheit.
+    pageBreak: {
+      label: "Seitenumbruch", icon: "✂️", group: "struktur",
+      noCard: true, forceBreak: true,
+      defaultConfig: function () { return {}; },
+      // Nur im Baukasten und in der Live-Vorschau sichtbar. Im exportierten
+      // Schülerblatt bliebe sonst eine gestrichelte Hilfslinie stehen, die
+      // für die Klasse nichts bedeutet.
+      render: function (c, uid, ctx) {
+        if (!(ctx && ctx.preview)) return "";
+        return '<div class="wb-forced-break no-print"><span>✂ Seitenumbruch – hier beginnt im PDF eine neue Seite</span></div>';
+      },
+      editor: function () {
+        var d = document.createElement("div");
+        var p = document.createElement("p");
+        p.className = "ed-note";
+        p.textContent = "Dieser Baustein erzwingt beim PDF-Export eine neue Seite. Er wird selbst nicht mitgedruckt und ist nur im Baukasten und in der Vorschau sichtbar.";
+        d.appendChild(p);
+        return d;
+      }
+    },
+
+    context: {
+      label: "Text / Kontext", icon: "📝", group: "inhalt",
+      defaultConfig: function () { return { html: "Neuer Absatz." }; },
+      render: function (c) { return autoParagraph(c.html); },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Text (HTML erlaubt, z. B. <strong>, <span class=\"swatch-linear\">Modell A</span>; Leerzeile = neuer Absatz)",
+          withSymbols(textArea(c.html, function (v) { api.update({ html: v }); }, 5))));
+        return d;
+      }
+    },
+
+    merksatz: {
+      label: "Merksatz", icon: "💡", group: "inhalt",
+      defaultConfig: function () { return { variant: "linear", label: "Merke", html: "Wichtiger Merksatz." }; },
+      render: function (c) {
+        var cls = "merksatz" + (c.variant === "exp" ? " merksatz-exp" : (c.variant === "neutral" ? " merksatz-neutral" : ""));
+        return '<div class="' + cls + '"><div class="label">' + esc(c.label) + "</div>" + autoParagraph(c.html) + "</div>";
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Farbe", selectInput(c.variant, [
+          { value: "linear", label: "Blau (linear)" }, { value: "exp", label: "Orange (exponentiell)" }, { value: "neutral", label: "Neutral" }
+        ], function (v) { api.update({ variant: v }); })));
+        d.appendChild(field("Titel", withSymbols(textInput(c.label, function (v) { api.update({ label: v }); }))));
+        d.appendChild(field("Text (HTML erlaubt, z. B. <span class=\"formula\">…</span> für Formeln)",
+          withSymbols(textArea(c.html, function (v) { api.update({ html: v }); }, 4))));
+        return d;
+      }
+    },
+
+    exampleTable: {
+      label: "Beispiel-Tabelle", icon: "🔢", group: "inhalt",
+      defaultConfig: function () {
+        return {
+          caption: "Musterbeispiel",
+          header: ["Tag n", "0", "1", "2"],
+          rows: [{ label: "Reihe A", variant: "linear", values: ["", "", ""] }]
+        };
+      },
+      render: function (c) {
+        var colCount = Math.max(0, (c.header || []).length - 1);
+        var head = "<tr>" + (c.header || []).map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr>";
+        var body = (c.rows || []).map(function (r) {
+          var vals = (r.values || []).slice(0, colCount);
+          while (vals.length < colCount) vals.push(""); // Zelle immer sichtbar, auch ohne Wert
+          // Die Swatch-Klasse NUR auf ein inneres <span> anwenden, nie auf das <th> selbst:
+          // .swatch-linear/.swatch-exp setzen display:inline-flex, was eine Tabellenzelle aus
+          // dem normalen Spaltenlayout herausbrechen und die Zeile schmaler als die anderen
+          // machen würde (dadurch fehlende/versetzte Rahmenlinien).
+          var vcls = variantClass(r.variant);
+          var labelHtml = vcls ? '<span class="' + vcls + '">' + esc(r.label) + "</span>" : esc(r.label);
+          return '<tr><th style="text-align:left;">' + labelHtml + "</th>" +
+            vals.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>";
+        }).join("");
+        return (c.caption ? "<p><strong>" + esc(c.caption) + "</strong></p>" : "") +
+          '<table class="example-table"><thead>' + head + "</thead><tbody>" + body + "</tbody></table>";
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Überschrift", withSymbols(textInput(c.caption, function (v) { api.update({ caption: v }); }))));
+        d.appendChild(field("Kopfzeile (Komma-getrennt)", withSymbols(textInput((c.header || []).join(", "), function (v) {
+          api.update({ header: v.split(",").map(function (s) { return s.trim(); }) });
+        }))));
+        var rowsWrap = document.createElement("div");
+        rowsWrap.appendChild(document.createTextNode("Zeilen:"));
+        rowsWrap.appendChild(listEditor(c.rows, {
+          addLabel: "Zeile hinzufügen",
+          newItem: function () { return { label: "Neue Reihe", variant: "neutral", values: [] }; },
+          onChange: function (rows) { api.update({ rows: rows }); },
+          renderRow: function (row, i, update) {
+            var g = document.createElement("div"); g.className = "ed-row-grid";
+            g.appendChild(withSymbols(textInput(row.label, function (v) { update({ label: v }); }, "Bezeichnung")));
+            g.appendChild(selectInput(row.variant, [{ value: "linear", label: "Blau" }, { value: "exp", label: "Orange" }, { value: "neutral", label: "Neutral" }], function (v) { update({ variant: v }); }));
+            g.appendChild(withSymbols(textInput((row.values || []).join(", "), function (v) { update({ values: v.split(",").map(function (s) { return s.trim(); }) }); }, "Werte, Komma-getrennt")));
+            return g;
+          }
+        }));
+        d.appendChild(rowsWrap);
+        return d;
+      }
+    },
+
+    drawpad: {
+      label: "Zeichenfläche", icon: "✏️", group: "interaktiv",
+      defaultConfig: function () { return { caption: "", height: 220 }; },
+      render: function (c, uid) {
+        return (c.caption ? "<p>" + autoParagraph(c.caption) + "</p>" : "") +
+          '<div class="drawpad-wrap"><div class="drawpad-toolbar no-print"></div>' +
+          '<canvas class="drawpad-canvas" id="wb-' + uid + '-pad" style="height:' + (c.height || 220) + 'px;"></canvas></div>';
+      },
+      mount: function (c, uid) {
+        var canvas = E.el("wb-" + uid + "-pad");
+        if (canvas) E.wireDrawpad(canvas.closest(".drawpad-wrap"));
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Hinweistext (optional)", textArea(c.caption, function (v) { api.update({ caption: v }); }, 2)));
+        d.appendChild(field("Höhe (px)", numberInput(c.height, function (v) { api.update({ height: v || 220 }); }, { step: 10, min: 100 })));
+        return d;
+      }
+    },
+
+    graph: {
+      label: "Parameter-Graph", icon: "📈", group: "interaktiv",
+      defaultConfig: function () {
+        return {
+          caption: "Verändere die Regler und beobachte die Graphen:",
+          height: 300,
+          days: { default: 12, min: 6, max: 16, showControl: true },
+          series: [
+            { key: "a", type: "linear", variant: "linear", label: "Modell A", a0Name: "Startwert a₀", a0: { default: 50, min: 0, max: 200, step: 5, unit: "€" }, paramName: "Zuwachs d", param: { default: 30, min: 0, max: 100, step: 5, unit: "€/Tag" } },
+            { key: "b", type: "exp", variant: "exp", label: "Modell B", a0Name: "Startwert a₀", a0: { default: 1, min: 1, max: 50, step: 1, unit: "€" }, paramName: "Wachstumsfaktor q", param: { default: 2, min: 1.1, max: 3, step: 0.1, unit: "" } }
+          ]
+        };
+      },
+      render: function (c, uid) {
+        var slidersHtml = (c.series || []).map(function (s) {
+          var vcls = s.variant === "exp" ? "exp" : "linear";
+          return (
+            '<div class="slider-field ' + vcls + '"><label for="wb-' + uid + '-' + s.key + '-a0">' + esc(s.label) + " – " + esc(s.a0Name || "Startwert") +
+            ' <span class="val" id="wb-' + uid + '-' + s.key + '-a0v"></span></label>' +
+            '<input type="range" class="no-print" id="wb-' + uid + '-' + s.key + '-a0" min="' + s.a0.min + '" max="' + s.a0.max + '" step="' + s.a0.step + '" value="' + s.a0.default + '"></div>' +
+            '<div class="slider-field ' + vcls + '"><label for="wb-' + uid + '-' + s.key + '-param">' + esc(s.label) + " – " + esc(s.paramName || "Parameter") +
+            ' <span class="val" id="wb-' + uid + '-' + s.key + '-paramv"></span></label>' +
+            '<input type="range" class="no-print" id="wb-' + uid + '-' + s.key + '-param" min="' + s.param.min + '" max="' + s.param.max + '" step="' + s.param.step + '" value="' + s.param.default + '"></div>'
+          );
+        }).join("");
+        var daysHtml = (c.days && c.days.showControl) ?
+          '<div class="slider-field"><label for="wb-' + uid + '-days">Anzahl Tage im Diagramm <span class="val" id="wb-' + uid + '-daysv"></span></label>' +
+          '<input type="range" class="no-print" id="wb-' + uid + '-days" min="' + c.days.min + '" max="' + c.days.max + '" step="1" value="' + c.days.default + '"></div>' : "";
+        return (c.caption ? "<p><strong>" + autoParagraph(c.caption).replace(/^<p>|<\/p>$/g, "") + "</strong></p>" : "") +
+          '<div class="graph-block"><div class="graph-wrap"><canvas class="graph-canvas" id="wb-' + uid + '-canvas" style="height:' + (c.height || 300) + 'px;"></canvas></div>' +
+          '<div class="slider-grid">' + slidersHtml + daysHtml + "</div></div>";
+      },
+      mount: function (c, uid) {
+        var canvas = E.el("wb-" + uid + "-canvas");
+        if (!canvas) return;
+        var days = c.days || { default: 12, min: 6, max: 16, showControl: false };
+        function fmt(u) { return u === "" || u === undefined ? "" : " " + u; }
+        function update() {
+          var series = (c.series || []).map(function (s) {
+            var a0 = Number(E.el("wb-" + uid + "-" + s.key + "-a0").value);
+            var param = Number(E.el("wb-" + uid + "-" + s.key + "-param").value);
+            var a0v = E.el("wb-" + uid + "-" + s.key + "-a0v");
+            var pv = E.el("wb-" + uid + "-" + s.key + "-paramv");
+            if (a0v) a0v.textContent = E.formatEuro(a0) + fmt(s.a0.unit);
+            if (pv) pv.textContent = (s.param.step < 1 ? E.formatDE(param, 1) : E.formatEuro(param)) + fmt(s.param.unit);
+            return { type: s.type, a0: a0, param: param, color: E.getCssVar(s.variant === "exp" ? "--accent-exp" : (s.variant === "linear" ? "--accent-linear" : "--accent-primary")) };
+          });
+          var maxDays = days.showControl ? Number(E.el("wb-" + uid + "-days").value) : days.default;
+          var dv = E.el("wb-" + uid + "-daysv"); if (dv) dv.textContent = String(maxDays);
+          E.drawGrowthGraph(canvas, { maxDays: maxDays, series: series });
+        }
+        (c.series || []).forEach(function (s) {
+          E.el("wb-" + uid + "-" + s.key + "-a0").addEventListener("input", update);
+          E.el("wb-" + uid + "-" + s.key + "-param").addEventListener("input", update);
+        });
+        if (days.showControl) E.el("wb-" + uid + "-days").addEventListener("input", update);
+        update();
+        E.redrawCallbacks.push(update);
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Überschrift über dem Graphen", textInput(c.caption, function (v) { api.update({ caption: v }); })));
+        d.appendChild(field("Höhe (px)", numberInput(c.height, function (v) { api.update({ height: v || 300 }); }, { step: 10, min: 150 })));
+        var daysWrap = document.createElement("div"); daysWrap.className = "ed-row-grid";
+        daysWrap.appendChild(checkboxInput(c.days.showControl, function (v) { c.days.showControl = v; api.update({ days: c.days }); }, "Tage-Regler anzeigen"));
+        daysWrap.appendChild(numberInput(c.days.default, function (v) { c.days.default = v; api.update({ days: c.days }); }, { min: 1 }));
+        daysWrap.appendChild(numberInput(c.days.min, function (v) { c.days.min = v; api.update({ days: c.days }); }, { min: 1 }));
+        daysWrap.appendChild(numberInput(c.days.max, function (v) { c.days.max = v; api.update({ days: c.days }); }, { min: 1 }));
+        d.appendChild(field("Tage: Standard / Min / Max", daysWrap));
+
+        var seriesWrap = document.createElement("div");
+        seriesWrap.appendChild(document.createTextNode("Modelle (Reihen):"));
+        seriesWrap.appendChild(listEditor(c.series, {
+          addLabel: "Modell hinzufügen",
+          newItem: function () {
+            return { key: uniqueId("s"), type: "linear", variant: "linear", label: "Neues Modell", a0Name: "Startwert a₀", a0: { default: 0, min: 0, max: 100, step: 1, unit: "€" }, paramName: "Parameter", param: { default: 1, min: 0, max: 10, step: 1, unit: "" } };
+          },
+          onChange: function (series) { api.update({ series: series }); },
+          renderRow: function (s, i, update, remove) {
+            var box = document.createElement("div"); box.className = "ed-subbox";
+            var g1 = document.createElement("div"); g1.className = "ed-row-grid";
+            g1.appendChild(textInput(s.label, function (v) { update({ label: v }); }, "Bezeichnung"));
+            g1.appendChild(selectInput(s.type, [{ value: "linear", label: "linear" }, { value: "exp", label: "exponentiell" }], function (v) { update({ type: v }); }));
+            g1.appendChild(selectInput(s.variant, [{ value: "linear", label: "Blau" }, { value: "exp", label: "Orange" }], function (v) { update({ variant: v }); }));
+            box.appendChild(g1);
+            var g2 = document.createElement("div"); g2.className = "ed-row-grid";
+            g2.appendChild(textInput(s.a0Name, function (v) { update({ a0Name: v }); }, "Name Startwert"));
+            g2.appendChild(numberInput(s.a0.default, function (v) { s.a0.default = v; update({ a0: s.a0 }); }, {}));
+            g2.appendChild(numberInput(s.a0.min, function (v) { s.a0.min = v; update({ a0: s.a0 }); }, {}));
+            g2.appendChild(numberInput(s.a0.max, function (v) { s.a0.max = v; update({ a0: s.a0 }); }, {}));
+            g2.appendChild(numberInput(s.a0.step, function (v) { s.a0.step = v; update({ a0: s.a0 }); }, {}));
+            g2.appendChild(textInput(s.a0.unit, function (v) { s.a0.unit = v; update({ a0: s.a0 }); }, "Einheit"));
+            box.appendChild(document.createTextNode("Startwert – Name / Standard / Min / Max / Schritt / Einheit"));
+            box.appendChild(g2);
+            var g3 = document.createElement("div"); g3.className = "ed-row-grid";
+            g3.appendChild(textInput(s.paramName, function (v) { update({ paramName: v }); }, "Name Parameter"));
+            g3.appendChild(numberInput(s.param.default, function (v) { s.param.default = v; update({ param: s.param }); }, {}));
+            g3.appendChild(numberInput(s.param.min, function (v) { s.param.min = v; update({ param: s.param }); }, {}));
+            g3.appendChild(numberInput(s.param.max, function (v) { s.param.max = v; update({ param: s.param }); }, {}));
+            g3.appendChild(numberInput(s.param.step, function (v) { s.param.step = v; update({ param: s.param }); }, {}));
+            g3.appendChild(textInput(s.param.unit, function (v) { s.param.unit = v; update({ param: s.param }); }, "Einheit"));
+            box.appendChild(document.createTextNode("Parameter (d/q) – Name / Standard / Min / Max / Schritt / Einheit"));
+            box.appendChild(g3);
+            var rm = document.createElement("button");
+            rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑 Modell entfernen";
+            rm.addEventListener("click", remove);
+            box.appendChild(rm);
+            return box;
+          }
+        }));
+        d.appendChild(seriesWrap);
+        return d;
+      }
+    },
+
+    coordinatePlane: {
+      label: "Koordinatensystem", icon: "📐", group: "inhalt",
+      defaultConfig: function () {
+        return {
+          caption: "",
+          xMin: -5, xMax: 5, yMin: -5, yMax: 5,
+          xLabel: "x", yLabel: "y",
+          xStep: 1, yStep: 1,
+          functions: [
+            { expr: "x^2", color: "exp", label: "" }
+          ]
+        };
+      },
+      render: function (c, uid) {
+        return (c.caption ? "<p>" + autoParagraph(c.caption) + "</p>" : "") +
+          '<div class="coord-plane-wrap"><canvas class="coord-plane-canvas" id="wb-' + uid + '-cp"></canvas></div>' +
+          '<div class="coord-plane-legend" id="wb-' + uid + '-cplegend"></div>';
+      },
+      mount: function (c, uid) {
+        var canvas = E.el("wb-" + uid + "-cp");
+        if (!canvas) return;
+        var legendEl = E.el("wb-" + uid + "-cplegend");
+        var compiled = (c.functions || []).map(function (f) {
+          var entry = { color: f.color, label: f.label || ("f(x) = " + f.expr), error: null, fn: null };
+          try { entry.fn = E.compileExpr(f.expr); } catch (err) { entry.error = err.message; }
+          return entry;
+        });
+        if (legendEl) {
+          legendEl.innerHTML = compiled.map(function (e) {
+            if (e.error) return '<span class="coord-plane-legend-item coord-plane-error">⚠ ' + esc(e.label) + " – ungültig: " + esc(e.error) + "</span>";
+            return '<span class="coord-plane-legend-item"><span class="coord-plane-dot" style="background:var(' + coordColorVar(e.color) + ')"></span>' + esc(e.label) + "</span>";
+          }).join("");
+        }
+        function update() {
+          E.drawCoordinatePlane(canvas, {
+            xMin: c.xMin, xMax: c.xMax, yMin: c.yMin, yMax: c.yMax,
+            xLabel: c.xLabel, yLabel: c.yLabel, xStep: c.xStep, yStep: c.yStep,
+            functions: compiled.filter(function (e) { return e.fn; }).map(function (e) {
+              return { fn: e.fn, color: E.getCssVar(coordColorVar(e.color)) };
+            })
+          });
+        }
+        update();
+        E.redrawCallbacks.push(update);
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Hinweistext (optional)", textArea(c.caption, function (v) { api.update({ caption: v }); }, 2)));
+
+        var rangeGrid = document.createElement("div"); rangeGrid.className = "ed-row-grid";
+        rangeGrid.appendChild(numberInput(c.xMin, function (v) { api.update({ xMin: v }); }, {}));
+        rangeGrid.appendChild(numberInput(c.xMax, function (v) { api.update({ xMax: v }); }, {}));
+        rangeGrid.appendChild(numberInput(c.yMin, function (v) { api.update({ yMin: v }); }, {}));
+        rangeGrid.appendChild(numberInput(c.yMax, function (v) { api.update({ yMax: v }); }, {}));
+        d.appendChild(field("Achsenbereich – x min / x max / y min / y max", rangeGrid));
+        var rangeHint = document.createElement("div");
+        rangeHint.style.cssText = "font-size:0.78rem;color:var(--bk-ink-soft);margin:-6px 0 4px;";
+        rangeHint.textContent = "Die Höhe des Koordinatensystems passt sich automatisch an die Breite an, damit die Kästchen immer quadratisch sind.";
+        d.appendChild(rangeHint);
+
+        var labelGrid = document.createElement("div"); labelGrid.className = "ed-row-grid";
+        labelGrid.appendChild(textInput(c.xLabel, function (v) { api.update({ xLabel: v }); }, "x-Achse"));
+        labelGrid.appendChild(textInput(c.yLabel, function (v) { api.update({ yLabel: v }); }, "y-Achse"));
+        d.appendChild(field("Achsenbeschriftung", labelGrid));
+
+        var stepGrid = document.createElement("div"); stepGrid.className = "ed-row-grid";
+        stepGrid.appendChild(numberInput(c.xStep, function (v) { api.update({ xStep: v || 1 }); }, { min: 0.1, step: 0.5 }));
+        stepGrid.appendChild(numberInput(c.yStep, function (v) { api.update({ yStep: v || 1 }); }, { min: 0.1, step: 0.5 }));
+        d.appendChild(field("Gitterabstand – x / y", stepGrid));
+
+        var funcsWrap = document.createElement("div");
+        funcsWrap.appendChild(document.createTextNode("Funktionen:"));
+        funcsWrap.appendChild(listEditor(c.functions, {
+          addLabel: "Funktion hinzufügen",
+          newItem: function () { return { expr: "x", color: "primary", label: "" }; },
+          onChange: function (fns) { api.update({ functions: fns }); },
+          renderRow: function (f, i, update, remove) {
+            var box = document.createElement("div"); box.className = "ed-subbox";
+            var g = document.createElement("div"); g.className = "ed-row-grid";
+            g.appendChild(textInput(f.expr, function (v) { update({ expr: v }); }, "z. B. x^2, sin(x), 2*x+1"));
+            g.appendChild(selectInput(f.color, COORD_COLORS.map(function (cc) { return { value: cc.value, label: cc.label }; }), function (v) { update({ color: v }); }));
+            g.appendChild(withSymbols(textInput(f.label, function (v) { update({ label: v }); }, "Beschriftung (optional)")));
+            box.appendChild(g);
+            var rm = document.createElement("button");
+            rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑 entfernen";
+            rm.addEventListener("click", remove);
+            box.appendChild(rm);
+            return box;
+          }
+        }));
+        d.appendChild(funcsWrap);
+        var hint = document.createElement("div");
+        hint.style.cssText = "font-size:0.78rem;color:var(--bk-ink-soft);margin-top:4px;";
+        hint.textContent = "Erlaubt: + − · / ^, Klammern, x, π (pi), e, sin/cos/tan, sqrt, abs, ln, log, exp. Multiplikation immer mit * schreiben (2*x, nicht 2x).";
+        d.appendChild(hint);
+        return d;
+      }
+    },
+
+    diagram: {
+      label: "Diagramm", icon: "📊", group: "inhalt",
+      defaultConfig: function () {
+        return {
+          caption: "", title: "",
+          chartType: "bar",
+          xLabel: "", yLabel: "", unit: "",
+          showValues: true,
+          height: 300,
+          data: [
+            { label: "Kategorie A", value: 4, color: "primary" },
+            { label: "Kategorie B", value: 7, color: "linear" },
+            { label: "Kategorie C", value: 3, color: "exp" }
+          ]
+        };
+      },
+      render: function (c, uid) {
+        var data = c.data || [];
+        var legendHtml = data.map(function (d) {
+          return '<span class="coord-plane-legend-item"><span class="coord-plane-dot" style="background:var(' + coordColorVar(d.color) + ')"></span>' + esc(d.label) + "</span>";
+        }).join("");
+        return (c.caption ? "<p>" + autoParagraph(c.caption) + "</p>" : "") +
+          (c.title ? "<p><strong>" + esc(c.title) + "</strong></p>" : "") +
+          '<div class="diagram-wrap"><canvas class="diagram-canvas" id="wb-' + uid + '-diagram" style="height:' + (c.height || 300) + 'px;"></canvas></div>' +
+          '<div class="coord-plane-legend">' + legendHtml + "</div>";
+      },
+      mount: function (c, uid) {
+        var canvas = E.el("wb-" + uid + "-diagram");
+        if (!canvas) return;
+        function update() {
+          E.drawDiagram(canvas, {
+            chartType: c.chartType,
+            xLabel: c.xLabel, yLabel: c.yLabel, unit: c.unit, showValues: c.showValues !== false,
+            data: (c.data || []).map(function (d) {
+              return { label: d.label, value: Number(d.value) || 0, color: E.getCssVar(coordColorVar(d.color)) };
+            })
+          });
+        }
+        update();
+        E.redrawCallbacks.push(update);
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Hinweistext (optional, über dem Diagramm)", withSymbols(textArea(c.caption, function (v) { api.update({ caption: v }); }, 2))));
+        d.appendChild(field("Titel (optional, fett über dem Diagramm)", withSymbols(textInput(c.title, function (v) { api.update({ title: v }); }))));
+
+        var typeGrid = document.createElement("div"); typeGrid.className = "ed-row-grid";
+        typeGrid.appendChild(selectInput(c.chartType, [
+          { value: "bar", label: "Balkendiagramm" }, { value: "line", label: "Liniendiagramm" }, { value: "pie", label: "Kreisdiagramm" }
+        ], function (v) { api.update({ chartType: v }); }));
+        typeGrid.appendChild(checkboxInput(c.showValues !== false, function (v) { api.update({ showValues: v }); }, "Werte anzeigen"));
+        d.appendChild(field("Diagrammtyp", typeGrid));
+
+        var labelGrid = document.createElement("div"); labelGrid.className = "ed-row-grid";
+        labelGrid.appendChild(withSymbols(textInput(c.xLabel, function (v) { api.update({ xLabel: v }); }, "x-Achse (Balken/Linie)")));
+        labelGrid.appendChild(withSymbols(textInput(c.yLabel, function (v) { api.update({ yLabel: v }); }, "y-Achse (Balken/Linie)")));
+        labelGrid.appendChild(withSymbols(textInput(c.unit, function (v) { api.update({ unit: v }); }, "Einheit (z. B. Schüler, kg, €)")));
+        d.appendChild(field("Achsenbeschriftung / Einheit (bei Kreisdiagramm ohne Wirkung)", labelGrid));
+
+        d.appendChild(field("Höhe (px)", numberInput(c.height, function (v) { api.update({ height: v || 300 }); }, { step: 10, min: 150 })));
+
+        var dataWrap = document.createElement("div");
+        dataWrap.appendChild(document.createTextNode("Datenreihen:"));
+        dataWrap.appendChild(listEditor(c.data, {
+          addLabel: "Wert hinzufügen",
+          newItem: function () { return { label: "Neue Kategorie", value: 1, color: COORD_COLORS[(c.data || []).length % COORD_COLORS.length].value }; },
+          onChange: function (data) { api.update({ data: data }); },
+          renderRow: function (row, i, update, remove) {
+            var g = document.createElement("div"); g.className = "ed-row-grid";
+            g.appendChild(withSymbols(textInput(row.label, function (v) { update({ label: v }); }, "Beschriftung")));
+            g.appendChild(numberInput(row.value, function (v) { update({ value: v === undefined ? 0 : v }); }, { step: 0.5 }));
+            g.appendChild(selectInput(row.color, COORD_COLORS.map(function (cc) { return { value: cc.value, label: cc.label }; }), function (v) { update({ color: v }); }));
+            var rm = document.createElement("button");
+            rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑";
+            rm.addEventListener("click", remove);
+            g.appendChild(rm);
+            return g;
+          }
+        }));
+        d.appendChild(dataWrap);
+        return d;
+      }
+    },
+
+    image: {
+      label: "Bild", icon: "🖼️", group: "inhalt",
+      defaultConfig: function () {
+        return { src: "", alt: "", caption: "", width: 100, align: "center" };
+      },
+      render: function (c) {
+        if (!c.src) {
+          return '<div class="wb-image-empty no-print">🖼️ Bild-Baustein: noch kein Bild ausgewählt – im Editor hochladen. (Nur in der Vorschau sichtbar, erscheint nicht im Export.)</div>';
+        }
+        var alignCls = c.align === "left" ? " align-left" : (c.align === "right" ? " align-right" : " align-center");
+        var w = Math.max(10, Math.min(100, Number(c.width) || 100));
+        return '<figure class="wb-image' + alignCls + '" style="width:' + w + '%;">' +
+          '<img src="' + esc(c.src) + '" alt="' + esc(c.alt || "") + '">' +
+          (c.caption ? "<figcaption>" + esc(c.caption) + "</figcaption>" : "") +
+          "</figure>";
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        var preview = document.createElement("div");
+        preview.style.cssText = "margin-bottom:8px;";
+        function renderPreview() {
+          preview.innerHTML = "";
+          if (c.src) {
+            var img = document.createElement("img");
+            img.src = c.src;
+            img.style.cssText = "max-width:100%;max-height:140px;border-radius:8px;border:1px solid var(--bk-line);display:block;";
+            preview.appendChild(img);
+            var rm = document.createElement("button");
+            rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑 Bild entfernen";
+            rm.style.marginTop = "6px";
+            rm.addEventListener("click", function () { c.src = ""; api.update({ src: "" }); renderPreview(); });
+            preview.appendChild(rm);
+          } else {
+            var hint = document.createElement("div");
+            hint.style.cssText = "font-size:0.82rem;color:var(--bk-ink-soft);";
+            hint.textContent = "Noch kein Bild ausgewählt.";
+            preview.appendChild(hint);
+          }
+        }
+        renderPreview();
+        d.appendChild(preview);
+
+        var fi = fileInput("image/*", function (file) {
+          readImageFile(file, function (err, dataUrl) {
+            if (err) { E.showToast(err.message); return; }
+            c.src = dataUrl;
+            api.update({ src: dataUrl });
+            renderPreview();
+          });
+        });
+        d.appendChild(field("Bild hochladen (wird eingebettet – JPG, PNG oder SVG)", fi));
+
+        d.appendChild(field("Alternativtext (für Screenreader, optional)",
+          textInput(c.alt, function (v) { api.update({ alt: v }); }, "kurze Beschreibung des Bildes")));
+        d.appendChild(field("Bildunterschrift (optional)",
+          withSymbols(textInput(c.caption, function (v) { api.update({ caption: v }); }, "z. B. Abb. 1: …"))));
+
+        var widthGrid = document.createElement("div"); widthGrid.className = "ed-row-grid";
+        widthGrid.appendChild(numberInput(c.width, function (v) { api.update({ width: v || 100 }); }, { min: 10, max: 100, step: 5 }));
+        widthGrid.appendChild(selectInput(c.align, [
+          { value: "left", label: "Links" }, { value: "center", label: "Mittig" }, { value: "right", label: "Rechts" }
+        ], function (v) { api.update({ align: v }); }));
+        d.appendChild(field("Breite (% der Textbreite) / Ausrichtung", widthGrid));
+
+        return d;
+      }
+    },
+
+    task: {
+      label: "Aufgabe", icon: "✅", group: "aufgabe",
+      defaultConfig: function () {
+        return {
+          prompt: "Neue Aufgabe formulieren.",
+          stars: 1, knobel: false,
+          // Schreibfläche standardmäßig an: Schüler sollen ihren Rechenweg
+          // direkt auf dem Blatt festhalten können, nicht nur das Ergebnis.
+          drawpad: true, drawpadHeight: CALC_HEIGHT,
+          template: "", fields: [], hints: [],
+          solution: ""
+        };
+      },
+      render: function (c, uid, ctx) {
+        var numLabel = c.knobel ? "★" : String((ctx && ctx.taskNumber) || "?");
+        var out = '<div class="task-head"><div class="task-num' + (c.knobel ? " knobel" : "") + '">' + numLabel + "</div>" +
+          '<div class="task-prompt">' + autoParagraph(c.prompt).replace(/^<p>|<\/p>\s*$/g, "") + "</div>" +
+          starsHtml(c.stars) + "</div>";
+
+        // Lösungsblatt: keine leeren Felder, keine Prüf-/Tipp-Knöpfe – die
+        // erwarteten Werte stehen direkt im Text, Tipps und Musterlösung sind
+        // von Anfang an aufgeklappt.
+        if (ctx && ctx.solution) {
+          // Auf dem Lösungsblatt keine leere Schreibfläche: sie würde die
+          // Lehrerfassung nur aufblähen, ohne etwas zu zeigen.
+          if (c.fields && c.fields.length && c.template) {
+            out += '<div class="answer-row"><div class="answer-template">' +
+              E.renderTemplateSolution(c.template, c.fields) + "</div></div>";
+          }
+          if (c.hints && c.hints.length) {
+            out += '<div class="hint-area open"><strong>Tipps:</strong><ol class="solution-hints">' +
+              c.hints.map(function (h) { return "<li>" + esc(h) + "</li>"; }).join("") + "</ol></div>";
+          }
+          if (c.solution) {
+            out += '<div class="solution-area open"><strong>Musterlösung:</strong>' + autoParagraph(c.solution) + "</div>";
+          }
+          return out;
+        }
+
+        // Fehlender Wert = an: ältere Blätter haben die Einstellung explizit,
+        // neue Aufgaben sollen die Fläche ohne Zutun bekommen.
+        if (c.drawpad !== false) out += calcAreaHtml(uid, c.drawpadHeight);
+        if (c.fields && c.fields.length) {
+          // Vorlage in einem eigenen Block-Container: .answer-row ist ein
+          // Flex-Container, in dem jeder Textschnipsel und jedes <br> zu einem
+          // eigenen Flex-Element würde – mehrzeilige Vorlagen wurden dadurch
+          // zerrissen. Im Block-Container fließt der Text normal, die Knöpfe
+          // bleiben im Flex-Teil darunter.
+          out += '<div class="answer-row"><div class="answer-template">' +
+            E.renderTemplate(c.template, c.fields, uid) + "</div>" +
+            '<button class="btn btn-sm no-print" data-wb-check="' + uid + '" type="button">Prüfen</button>';
+          if (c.hints && c.hints.length) out += '<button class="btn btn-ghost btn-sm no-print" data-wb-hint="' + uid + '" type="button">Tipp</button>';
+          out += "</div>";
+          out += '<div class="feedback" id="wb-' + uid + '-fb"></div>';
+          if (c.hints && c.hints.length) out += '<div class="hint-area" id="wb-' + uid + '-hint"></div>';
+        }
+        if (c.solution) {
+          out += '<div class="answer-row no-print"><button class="btn btn-ghost btn-sm" data-wb-reveal="' + uid + '" type="button">Musterlösung anzeigen</button></div>';
+          out += '<div class="solution-area" id="wb-' + uid + '-sol">' + autoParagraph(c.solution) + "</div>";
+        }
+        return out;
+      },
+      mount: function (c, uid) {
+        if (c.drawpad !== false) mountCalcArea(uid);
+        if (c.fields && c.fields.length) {
+          var checkBtn = document.querySelector('[data-wb-check="' + uid + '"]');
+          if (checkBtn) checkBtn.addEventListener("click", function () { E.checkFieldsTask(uid, c.fields); });
+          if (c.hints && c.hints.length) {
+            var hintBtn = document.querySelector('[data-wb-hint="' + uid + '"]');
+            if (hintBtn) E.wireHintButton(hintBtn, "wb-" + uid + "-hint", c.hints);
+          }
+        }
+        if (c.solution) {
+          var revealBtn = document.querySelector('[data-wb-reveal="' + uid + '"]');
+          if (revealBtn) E.wireRevealButton(revealBtn, "wb-" + uid + "-sol");
+        }
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Aufgabentext (Operator verwenden: berechne, bestimme, begründe, gib an, …)",
+          withSymbols(textArea(c.prompt, function (v) { api.update({ prompt: v }); }, 3))));
+        var row = document.createElement("div"); row.className = "ed-row-grid";
+        row.appendChild(selectInput(String(c.stars), [{ value: "1", label: "★☆☆ leicht" }, { value: "2", label: "★★☆ mittel" }, { value: "3", label: "★★★ schwer" }], function (v) { api.update({ stars: Number(v) }); }));
+        row.appendChild(checkboxInput(c.knobel, function (v) { api.update({ knobel: v }); }, "Knobelaufgabe (★ statt Nummer)"));
+        row.appendChild(checkboxInput(c.drawpad !== false, function (v) { api.update({ drawpad: v }); api.refresh(); }, "Rechenweg: Schreibfläche anzeigen"));
+        d.appendChild(field("Einstellungen", row));
+        if (c.drawpad !== false) {
+          d.appendChild(field("Höhe der Schreibfläche in px (300 ≈ ein Viertel Seite, 460 ≈ ein Drittel)",
+            numberInput(c.drawpadHeight || CALC_HEIGHT, function (v) { api.update({ drawpadHeight: v || CALC_HEIGHT }); }, { step: 20, min: 100 })));
+        }
+
+        // Vorlage + „Lücke einfügen“: der Knopf setzt den Platzhalter an der
+        // Cursorposition UND legt das passende geprüfte Feld gleich mit an –
+        // ids muss man dadurch nie von Hand verknüpfen.
+        var tplArea = textArea(c.template, function (v) { api.update({ template: v }); updateWarn(); }, 2);
+        var tplWrap = document.createElement("div");
+        tplWrap.appendChild(withSymbols(tplArea));
+        var gapBtn = document.createElement("button");
+        gapBtn.type = "button"; gapBtn.className = "btn btn-sm";
+        gapBtn.textContent = "＋ Lücke einfügen";
+        gapBtn.title = "Setzt einen Platzhalter an der Cursorposition und legt das passende geprüfte Feld gleich mit an";
+        gapBtn.addEventListener("click", function () {
+          var id = nextFieldId(c.fields);
+          var newFields = (c.fields || []).concat([{ id: id, type: "number", unit: "", expected: 0, options: [] }]);
+          insertAtCursor(tplArea, "{{" + id + "}}"); // löst den onChange der Vorlage aus
+          api.update({ fields: newFields });
+          api.refresh();
+        });
+        tplWrap.appendChild(gapBtn);
+        d.appendChild(field("Vorlage mit Lücken – {{id}} wird durch das passende Feld ersetzt, z. B.: A(5) = {{a}} (die Einheit gehört ins Feld, nicht in die Vorlage)", tplWrap));
+
+        // Warnzeile: meldet Platzhalter ohne Feld und Felder ohne Platzhalter –
+        // die häufigste stille Fehlerquelle beim Bauen von Aufgaben.
+        var warn = document.createElement("div");
+        warn.className = "ed-warn";
+        function updateWarn() {
+          var tpl = String(c.template || "");
+          var used = [];
+          tpl.replace(/\{\{(\w+)\}\}/g, function (m, id) { used.push(id); return m; });
+          var defined = (c.fields || []).map(function (f) { return f.id; });
+          var missing = used.filter(function (id) { return defined.indexOf(id) === -1; });
+          var unused = defined.filter(function (id) { return used.indexOf(id) === -1; });
+          var msgs = [];
+          if (missing.length) msgs.push("Zu {{" + missing.join("}}, {{") + "}} gibt es kein Feld – die Lücke bleibt als Text stehen.");
+          if (unused.length) msgs.push("Feld „" + unused.join("“, „") + "“ kommt in der Vorlage nicht vor und wird nicht angezeigt.");
+          if (!tpl.trim() && defined.length) msgs.push("Es gibt Felder, aber keine Vorlage – ohne Vorlagentext erscheint nichts.");
+          warn.innerHTML = msgs.map(function (m) { return "⚠ " + esc(m); }).join("<br>");
+          warn.style.display = msgs.length ? "block" : "none";
+        }
+        d.appendChild(warn);
+
+        var fieldsWrap = document.createElement("div");
+        fieldsWrap.appendChild(document.createTextNode("Geprüfte Felder (verknüpft über die id mit der Vorlage oben):"));
+        var altHinweis = document.createElement("p");
+        altHinweis.className = "ed-note";
+        altHinweis.textContent = "Mehrere zulässige Schreibweisen mit Semikolon trennen, z. B. „0,5; 1/2; ein halb\". "
+          + "Die erste zählt als Musterlösung auf dem Lösungsblatt. Komma/Punkt und Einheiten wie € werden ohnehin toleriert.";
+        fieldsWrap.appendChild(altHinweis);
+        fieldsWrap.appendChild(listEditor(c.fields, {
+          addLabel: "Feld hinzufügen",
+          newItem: function () { return { id: nextFieldId(c.fields), type: "number", unit: "", expected: 0, options: [] }; },
+          onChange: function (fields) { api.update({ fields: fields }); updateWarn(); },
+          renderRow: function (f, i, update, remove) {
+            var box = document.createElement("div"); box.className = "ed-subbox";
+            var g = document.createElement("div"); g.className = "ed-row-grid";
+            g.appendChild(textInput(f.id, function (v) { update({ id: v }); }, "id"));
+            g.appendChild(selectInput(f.type, [{ value: "number", label: "Zahl" }, { value: "choice", label: "Auswahl" }], function (v) { update({ type: v }); }));
+            if (f.type === "number") {
+              g.appendChild(textInput(String(f.expected), function (v) { update({ expected: v }); },
+                "erwarteter Wert (mehrere mit ; trennen)"));
+              g.appendChild(textInput(f.unit, function (v) { update({ unit: v }); }, "Einheit (z. B. €)"));
+              // Feldbreite bewusst kein Eingabefeld mehr: sie ergibt sich
+              // automatisch aus der Länge des erwarteten Werts (siehe
+              // renderTemplate in engine.js).
+            } else {
+              g.appendChild(textInput((f.options || []).map(function (o) { return o.value + ":" + o.label; }).join(", "), function (v) {
+                var opts = v.split(",").map(function (s) { s = s.trim(); var parts = s.split(":"); return { value: (parts[0] || "").trim(), label: (parts[1] || parts[0] || "").trim() }; }).filter(function (o) { return o.value; });
+                update({ options: opts });
+              }, "wert:Label, wert2:Label2"));
+              g.appendChild(textInput(String(f.expected), function (v) { update({ expected: v }); },
+                "erwarteter Wert (=wert, mehrere mit ; trennen)"));
+            }
+            box.appendChild(g);
+            var rm = document.createElement("button");
+            rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑 entfernen";
+            rm.addEventListener("click", remove);
+            box.appendChild(rm);
+            return box;
+          }
+        }));
+        d.appendChild(fieldsWrap);
+
+        var hintsWrap = document.createElement("div");
+        hintsWrap.appendChild(document.createTextNode("Tipps (nacheinander einblendbar):"));
+        hintsWrap.appendChild(listEditor(c.hints.map(function (h) { return { text: h }; }), {
+          addLabel: "Tipp hinzufügen",
+          newItem: function () { return { text: "" }; },
+          onChange: function (items) { api.update({ hints: items.map(function (h) { return h.text; }) }); },
+          renderRow: function (h, i, update, remove) {
+            var g = document.createElement("div"); g.className = "ed-row-grid-1";
+            g.appendChild(withSymbols(textInput(h.text, function (v) { update({ text: v }); }, "Tipptext")));
+            var rm = document.createElement("button"); rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑";
+            rm.addEventListener("click", remove);
+            g.appendChild(rm);
+            return g;
+          }
+        }));
+        d.appendChild(hintsWrap);
+
+        d.appendChild(field("Musterlösung (optional, einblendbar; leer lassen = keine Musterlösung)",
+          withSymbols(textArea(c.solution, function (v) { api.update({ solution: v }); }, 3))));
+        updateWarn();
+        return d;
+      }
+    },
+
+    sortTask: {
+      label: "Sortier-Aufgabe", icon: "🔀", group: "aufgabe",
+      defaultConfig: function () {
+        return {
+          prompt: "Bringe die Elemente in die richtige Reihenfolge.",
+          stars: 1, knobel: false,
+          drawpad: true, drawpadHeight: CALC_HEIGHT,
+          items: ["Erster Schritt", "Zweiter Schritt", "Dritter Schritt", "Vierter Schritt"]
+        };
+      },
+      render: function (c, uid, ctx) {
+        var numLabel = c.knobel ? "★" : String((ctx && ctx.taskNumber) || "?");
+        var items = (c.items || []).map(function (text, i) { return { key: i, text: text }; });
+        var head = '<div class="task-head"><div class="task-num' + (c.knobel ? " knobel" : "") + '">' + numLabel + "</div>" +
+          '<div class="task-prompt">' + autoParagraph(c.prompt).replace(/^<p>|<\/p>\s*$/g, "") + "</div>" +
+          starsHtml(c.stars) + "</div>";
+
+        // Lösungsblatt: korrekte Reihenfolge, durchnummeriert, ohne Ziehgriffe
+        // und ohne Prüf-Knopf.
+        if (ctx && ctx.solution) {
+          var solHtml = items.map(function (it, i) {
+            return '<div class="sort-item solved"><span class="sort-rank">' + (i + 1) + ".</span>" +
+              '<span class="sort-text">' + esc(it.text) + "</span></div>";
+          }).join("");
+          return head + '<div class="sort-list">' + solHtml + "</div>";
+        }
+
+        var shuffled = E.seededShuffle(items, uid);
+        var itemsHtml = shuffled.map(function (it) {
+          return '<div class="sort-item" data-key="' + it.key + '">' +
+            '<span class="sort-handle no-print" aria-label="Ziehen zum Umsortieren">⠿</span>' +
+            '<span class="sort-text">' + esc(it.text) + "</span>" +
+            '<span class="sort-moves no-print">' +
+            '<button type="button" class="sort-move" data-sort-up aria-label="Nach oben">▲</button>' +
+            '<button type="button" class="sort-move" data-sort-down aria-label="Nach unten">▼</button>' +
+            "</span></div>";
+        }).join("");
+        return head +
+          '<div class="sort-list" id="wb-' + uid + '-sort">' + itemsHtml + "</div>" +
+          '<div class="answer-row no-print"><button class="btn btn-sm no-print" data-wb-sortcheck="' + uid + '" type="button">Prüfen</button></div>' +
+          '<div class="feedback" id="wb-' + uid + '-fb"></div>' +
+          (c.drawpad !== false ? calcAreaHtml(uid, c.drawpadHeight) : "");
+      },
+      mount: function (c, uid) {
+        var container = E.el("wb-" + uid + "-sort");
+        E.wireSortList(container);
+        if (c.drawpad !== false) mountCalcArea(uid);
+        var checkBtn = document.querySelector('[data-wb-sortcheck="' + uid + '"]');
+        if (checkBtn) checkBtn.addEventListener("click", function () { E.checkSortTask(uid); });
+      },
+      editor: function (c, api) {
+        var d = document.createElement("div");
+        d.appendChild(field("Aufgabentext (z. B. „Bringe … in die richtige Reihenfolge.“)",
+          withSymbols(textArea(c.prompt, function (v) { api.update({ prompt: v }); }, 2))));
+        var row = document.createElement("div"); row.className = "ed-row-grid";
+        row.appendChild(selectInput(String(c.stars), [{ value: "1", label: "★☆☆ leicht" }, { value: "2", label: "★★☆ mittel" }, { value: "3", label: "★★★ schwer" }], function (v) { api.update({ stars: Number(v) }); }));
+        row.appendChild(checkboxInput(c.knobel, function (v) { api.update({ knobel: v }); }, "Knobelaufgabe (★ statt Nummer)"));
+        row.appendChild(checkboxInput(c.drawpad !== false, function (v) { api.update({ drawpad: v }); api.refresh(); }, "Rechenweg: Schreibfläche anzeigen"));
+        d.appendChild(field("Einstellungen", row));
+        if (c.drawpad !== false) {
+          d.appendChild(field("Höhe der Schreibfläche in px",
+            numberInput(c.drawpadHeight || CALC_HEIGHT, function (v) { api.update({ drawpadHeight: v || CALC_HEIGHT }); }, { step: 20, min: 100 })));
+        }
+
+        var itemsWrap = document.createElement("div");
+        itemsWrap.appendChild(document.createTextNode("Elemente in der KORREKTEN Reihenfolge (wird den Schülern gemischt angezeigt):"));
+        itemsWrap.appendChild(listEditor(c.items.map(function (t) { return { text: t }; }), {
+          addLabel: "Element hinzufügen",
+          newItem: function () { return { text: "Neues Element" }; },
+          onChange: function (items) { api.update({ items: items.map(function (it) { return it.text; }) }); },
+          renderRow: function (it, i, update, remove) {
+            var g = document.createElement("div"); g.className = "ed-row-grid-1";
+            g.appendChild(withSymbols(textInput(it.text, function (v) { update({ text: v }); }, "Text")));
+            var rm = document.createElement("button"); rm.type = "button"; rm.className = "btn btn-sm btn-ghost"; rm.textContent = "🗑";
+            rm.addEventListener("click", remove);
+            g.appendChild(rm);
+            return g;
+          }
+        }));
+        d.appendChild(itemsWrap);
+        return d;
+      }
+    }
+  };
+
+  var GROUP_LABELS = { struktur: "Struktur", inhalt: "Inhalt", interaktiv: "Interaktiv", aufgabe: "Aufgaben" };
+
+  /* ================= Gesamt-Renderer / Mount ================= */
+  function renderHeaderCard(meta, solution) {
+    return (
+      '<section class="header-card wb-block' + (solution ? " is-solution" : "") + '" data-keep-with-next="false">' +
+      '<div class="chapter-eyebrow-row"><span class="chapter-eyebrow">' + esc(meta.chapterCode || "") + " &nbsp;" + esc(meta.chapterTitle || "") + "</span>" +
+      '<span class="chapter-meta">' + esc(meta.klasse || "") + (meta.klasse && meta.datum ? " · " : "") + esc(meta.datum || "") + "</span></div>" +
+      (solution ? '<div class="solution-badge">🔑 Lösungsblatt – nur für die Lehrkraft</div>' : "") +
+      "<h1>" + esc(meta.title || "") + (solution ? " – Lösungen" : "") + "</h1>" +
+      (meta.subtitle ? '<p class="subtitle">' + esc(meta.subtitle) + "</p>" : "") +
+      "</section>"
+    );
+  }
+
+  // Ordnet alle Bausteine im 4-spaltigen Raster an – "Frei im Raster
+  // verschiebbar": jeder Baustein trägt (nach dem ersten Normalisieren)
+  // ein explizites row/col-Feld, Lücken sind erlaubt. normalizeLayout()
+  // ist die EINZIGE Stelle, die diese Felder interpretiert/schreibt:
+  //  1) Fehlen row/col bei ALLEN Bausteinen (z. B. ein altes, vor Option 2
+  //     gespeichertes Projekt), werden sie einmalig nach dem alten
+  //     Textumfluss-Prinzip vergeben (Rückwärtskompatibilität).
+  //  2) Andernfalls werden vorhandene row/col respektiert, nach (row, col,
+  //     bisherige Array-Position) sortiert und Überlappungen aufgelöst:
+  //     ein später einsortierter Baustein wird innerhalb der Zeile nach
+  //     rechts verschoben bzw. – falls kein Platz mehr ist – in eine neue
+  //     Zeile direkt danach verschoben.
+  //  3) Strukturelemente (z. B. Phasen-Überschrift) stehen immer alleine
+  //     in ihrer eigenen vollen Zeile.
+  //  4) Zeilennummern werden am Ende auf dichte, sortierte Ganzzahlen
+  //     (0,1,2,…) kompaktiert, und project.blocks wird in die daraus
+  //     resultierende Lesereihenfolge (Zeile, dann Spalte) umsortiert –
+  //     damit bleiben Baustein-Liste im Editor, Live-Vorschau und Export
+  //     immer exakt in derselben Reihenfolge.
+  // Rückgabe: Array von Zeilen, jede Zeile ein Array von
+  // { b, def, span, col } – wird sowohl vom Editor (Raster-Spiegel der
+  // Bausteinliste) als auch von renderBody()/PDF-Export verwendet.
+  function normalizeLayout(blocks) {
+    blocks = blocks || [];
+    var items = [];
+    blocks.forEach(function (b, idx) {
+      var def = Registry[b.type];
+      if (!def) return;
+      var span = def.noCard ? 4 : Math.max(1, Math.min(4, Math.round(Number(b.span)) || 4));
+      items.push({ b: b, def: def, span: span, idx: idx });
+    });
+
+    var hasAnyPos = items.some(function (it) {
+      return typeof it.b.row === "number" && isFinite(it.b.row) && typeof it.b.col === "number" && isFinite(it.b.col);
+    });
+
+    if (!hasAnyPos) {
+      // Altes Projekt ohne row/col: einmalig nach altem Textumfluss-Prinzip
+      // (greedy, in Array-Reihenfolge) verteilen.
+      var row = 0, used = 0;
+      items.forEach(function (it) {
+        if (it.def.noCard) {
+          if (used > 0) { row++; used = 0; }
+          it.row = row; it.col = 0;
+          row++; used = 0;
+          return;
+        }
+        if (used + it.span > 4) { row++; used = 0; }
+        it.row = row; it.col = used;
+        used += it.span;
+      });
+    } else {
+      items.forEach(function (it) {
+        it.row = (typeof it.b.row === "number" && isFinite(it.b.row)) ? it.b.row : it.idx;
+        it.col = (typeof it.b.col === "number" && isFinite(it.b.col)) ? Math.max(0, Math.min(3, Math.round(it.b.col))) : 0;
+      });
+    }
+
+    // Spanne an Spalte anpassen, falls sie über den Rand hinausragen würde.
+    items.forEach(function (it) {
+      if (it.def.noCard) { it.col = 0; it.span = 4; return; }
+      if (it.col + it.span > 4) it.span = 4 - it.col;
+      if (it.span < 1) { it.col = 0; it.span = 1; }
+    });
+
+    // Stabil nach (row, col, ursprünglichem Index) sortieren.
+    items.sort(function (a, b2) {
+      if (a.row !== b2.row) return a.row - b2.row;
+      if (a.col !== b2.col) return a.col - b2.col;
+      return a.idx - b2.idx;
+    });
+
+    // Zeilen aufbauen: gleiche row-Werte kommen möglichst in dieselbe Zeile,
+    // Überlappungen schieben den später einsortierten Baustein nach rechts
+    // bzw. – falls kein Platz mehr da ist – in eine neue Zeile.
+    var rows = [];
+    var current = null, currentKey = null;
+    function occupied(rowItems) {
+      var occ = [false, false, false, false];
+      rowItems.forEach(function (it) {
+        for (var c = it.col; c < it.col + it.span && c < 4; c++) occ[c] = true;
+      });
+      return occ;
+    }
+    function fitsFrom(occ, col, span) {
+      for (var c = col; c < col + span; c++) { if (c >= 4 || occ[c]) return false; }
+      return true;
+    }
+    items.forEach(function (it) {
+      if (it.def.noCard) {
+        if (current) { rows.push(current); current = null; }
+        rows.push([it]);
+        currentKey = null;
+        return;
+      }
+      if (current === null) {
+        current = [it]; currentKey = it.row;
+        return;
+      }
+      if (it.row !== currentKey) {
+        rows.push(current);
+        current = [it]; currentKey = it.row;
+        return;
+      }
+      var occ = occupied(current);
+      var col = it.col;
+      if (!fitsFrom(occ, col, it.span)) {
+        var placed = false;
+        for (var c2 = col + 1; c2 <= 4 - it.span; c2++) {
+          if (fitsFrom(occ, c2, it.span)) { col = c2; placed = true; break; }
+        }
+        if (!placed) {
+          rows.push(current);
+          current = [it]; currentKey = it.row;
+          col = it.col;
+        }
+      }
+      it.col = col;
+      current.push(it);
+    });
+    if (current) rows.push(current);
+
+    // Dichte Zeilennummern zurückschreiben + project.blocks in Lesereihenfolge bringen.
+    var ordered = [];
+    rows.forEach(function (rowItems, rIdx) {
+      rowItems.forEach(function (it) {
+        it.b.row = rIdx; it.b.col = it.col; it.b.span = it.span;
+        ordered.push(it.b);
+      });
+    });
+    if (ordered.length === blocks.length) {
+      blocks.length = 0;
+      Array.prototype.push.apply(blocks, ordered);
+    }
+
+    return rows.map(function (rowItems) {
+      return rowItems.map(function (it) { return { b: it.b, def: it.def, span: it.span, col: it.col }; });
+    });
+  }
+
+  function computeRows(blocks) {
+    return normalizeLayout(blocks);
+  }
+
+  // project.solutionMode  → Lehrerfassung (Lösungen eingetragen/aufgeklappt)
+  // project.previewMode   → Live-Vorschau im Baukasten: kein PDF-Knopf in der
+  //                         Topbar, weil dort jsPDF/html2canvas bewusst nicht
+  //                         mitgeladen werden (der Baukasten exportiert selbst).
+  function renderBody(project) {
+    var taskNumber = 0;
+    var solution = !!project.solutionMode;
+    var rows = computeRows(project.blocks);
+    var blocksHtml = rows.map(function (row) {
+      var rowKeepWithNext = row.some(function (item) { return !!item.def.keepWithNext; });
+      var rowForceBreak = row.length === 1 && !!row[0].def.forceBreak;
+      var cellsHtml = row.map(function (item) {
+        var b = item.b, def = item.def;
+        var ctx = { solution: solution, preview: !!project.previewMode };
+        if ((b.type === "task" || b.type === "sortTask") && !b.config.knobel) { taskNumber++; ctx.taskNumber = taskNumber; }
+        var inner = def.render(b.config, b.id, ctx);
+        var cls = "wb-block" + (def.noCard ? "" : " card");
+        var gridCol = def.noCard ? ("1 / span 4") : ((item.col + 1) + " / span " + item.span);
+        return '<div class="' + cls + '" data-block-id="' + b.id + '" style="grid-column: ' + gridCol + ';">' + inner + "</div>";
+      }).join("");
+      // Eine Zeile, die nur den (im Schülerblatt unsichtbaren) Umbruch-
+      // Baustein enthält, darf dort auch keinen Abstand hinterlassen. Die
+      // Zeile selbst bleibt stehen, weil die Seitenaufteilung beim PDF-Export
+      // ihr data-force-break liest.
+      var leerBreak = rowForceBreak && !project.previewMode;
+      return '<div class="wb-row' + (leerBreak ? " wb-break-only" : "") +
+        '" data-keep-with-next="' + rowKeepWithNext + '"' +
+        (rowForceBreak ? ' data-force-break="true"' : "") + ">" + cellsHtml + "</div>";
+    }).join("\n");
+    return (
+      '<div class="topbar no-print"><div class="topbar-inner"><h1>' + esc(meta_(project).chapterCode) + " " + esc(meta_(project).chapterTitle) +
+      (solution ? " · Lösungen" : "") + "</h1>" +
+      (project.previewMode ? "" : '<button class="btn btn-primary btn-sm" id="wbExportPdfBtn" type="button">⭳ Als PDF sichern</button>') +
+      "</div></div>" +
+      '<main id="wbWorksheet">' + renderHeaderCard(meta_(project), solution) + blocksHtml + "</main>" +
+      '<footer class="appfoot no-print">' + (solution ? "Lösungsblatt" : "Interaktives Arbeitsblatt") + (meta_(project).chapterCode ? " · " + esc(meta_(project).chapterCode) : "") + "</footer>" +
+      '<button class="scratch-fab no-print" id="wbScratchFab" type="button" aria-label="Kritzelblock öffnen">✎</button>' +
+      '<div class="scratch-panel no-print" id="wbScratchPanel">' +
+      '<div class="scratch-head"><h3>Nebenrechnungen</h3><span class="scratch-spacer"></span>' +
+      '<button class="btn btn-ghost btn-sm" id="wbScratchSize" type="button">⤢ Größer</button>' +
+      '<button class="btn btn-ghost btn-sm" id="wbScratchClose" type="button" aria-label="Schließen">✕</button></div>' +
+      '<div class="drawpad-wrap" style="margin-top:0;"><div class="drawpad-toolbar"></div>' +
+      '<canvas class="drawpad-canvas" id="wbScratchPad"></canvas></div></div>' +
+      '<div class="toast no-print" id="wbToast"></div>'
+    );
+  }
+  function meta_(project) { return project.meta || {}; }
+
+  function mount(project) {
+    if (project.solutionMode) document.body.classList.add("wb-solution");
+    (project.blocks || []).forEach(function (b) {
+      var def = Registry[b.type];
+      if (def && def.mount) def.mount(b.config, b.id);
+    });
+    E.wireDrawpad(document.getElementById("wbScratchPad") ? document.getElementById("wbScratchPad").closest(".drawpad-wrap") : null);
+    var fab = E.el("wbScratchFab"), panel = E.el("wbScratchPanel");
+    function redrawAll() { E.redrawCallbacks.forEach(function (fn) { try { fn(); } catch (e) {} }); }
+    if (fab && panel) {
+      fab.addEventListener("click", function () {
+        panel.classList.toggle("show");
+        if (panel.classList.contains("show")) redrawAll();
+      });
+      var closeBtn = E.el("wbScratchClose");
+      if (closeBtn) closeBtn.addEventListener("click", function () { panel.classList.remove("show"); });
+      // Größe umschalten: normal / fast bildschirmfüllend. Der Zeichenpuffer
+      // wird beim Umschalten neu vermessen, die Striche bleiben erhalten.
+      var sizeBtn = E.el("wbScratchSize");
+      if (sizeBtn) sizeBtn.addEventListener("click", function () {
+        var big = panel.classList.toggle("big");
+        sizeBtn.textContent = big ? "⤡ Kleiner" : "⤢ Größer";
+        requestAnimationFrame(redrawAll);
+      });
+    }
+    var exportBtn = E.el("wbExportPdfBtn");
+    if (exportBtn) exportBtn.addEventListener("click", function () {
+      var fname = (project.meta && project.meta.filename ? project.meta.filename : "arbeitsblatt") +
+        (project.solutionMode ? "_loesung.pdf" : "_ausgefuellt.pdf");
+      E.exportPdf("wbWorksheet", fname, "wbExportPdfBtn");
+    });
+    window.addEventListener("resize", E.debounce(function () {
+      E.redrawCallbacks.forEach(function (fn) { try { fn(); } catch (e) {} });
+    }, 150));
+
+    // Seitenumbruch-Indikator: zeigt in der Live-Vorschau gestrichelte
+    // Linien dort, wo der PDF-Export vermutlich eine neue Seite beginnen
+    // würde. Rein informativ, wird bei jedem Redraw (Resize, Panel-Toggle)
+    // neu berechnet – und bewusst NUR im Baukasten: im Schülerblatt wäre die
+    // Linie mit ihrem „✂ Seite 2“-Schild nur Verwirrung.
+    if (project.previewMode) {
+      var updatePageBreaks = function () { E.renderPageBreakOverlays("wbWorksheet"); };
+      E.redrawCallbacks.push(updatePageBreaks);
+      updatePageBreaks();
+    }
+
+    // Schreibflächen: „stift" heißt, dass nur ein Stift zeichnet (Finger
+    // scrollt). Ohne Häkchen entscheidet das Blatt selbst, sobald zum ersten
+    // Mal ein Stift benutzt wurde.
+    E.setStiftModus(meta_(project).penOnly ? "stift" : "auto");
+
+    // Zuletzt: Eingaben wiederherstellen und ab jetzt mitschreiben. Muss nach
+    // dem Mounten aller Bausteine laufen, damit Felder und Zeichenflächen da sind.
+    E.wireAutosave(project);
+  }
+
+  global.BlockRegistry = Registry;
+  global.WBGroupLabels = GROUP_LABELS;
+  global.WBRuntime = { renderBody: renderBody, mount: mount, autoParagraph: autoParagraph, uniqueId: uniqueId, normalizeLayout: normalizeLayout };
+})(window);
+</script>
+<script>
+window.WB_PROJECT = {"meta":{"chapterCode":"I.1","chapterTitle":"Lineares und exponentielles Wachstum","title":"Zwei Videos, zwei Verläufe","subtitle":"Mathematik · Jahrgangsstufe 10 · Doppelstunde","klasse":"10","datum":"","filename":"jgst10_wachstum","slim":true},"blocks":[{"id":"b1","type":"phaseHeading","config":{"tag":"Einstieg","title":"Zwei Videos, zwei Verläufe"},"span":4,"col":0,"row":0},{"id":"b2","type":"context","config":{"html":"Zwei Klassen der Schule stellen am selben Tag ein Video online. Beide starten mit \u003cstrong>200 Aufrufen\u003c/strong>.\u003cbr>\u003cspan class=\"swatch-linear\">Video A\u003c/span> bekommt jeden Tag \u003cstrong>400 Aufrufe\u003c/strong> dazu.\u003cbr>\u003cspan class=\"swatch-exp\">Video B\u003c/span> hat jeden Tag \u003cstrong>20 % mehr\u003c/strong> Aufrufe als am Tag davor.\n\nBevor du rechnest: Entscheide dich. Deine Vermutung ist Teil der Aufgabe – und darf sich als falsch herausstellen."},"span":4,"col":0,"row":1},{"id":"b4","type":"graph","config":{"caption":"Probiere es aus: Wann hat welches Video mehr Aufrufe?","height":320,"days":{"default":14,"min":6,"max":26,"showControl":true},"series":[{"key":"a","type":"linear","variant":"linear","label":"Video A","a0Name":"Startwert","a0":{"default":200,"min":0,"max":600,"step":50,"unit":"Aufrufe"},"paramName":"Zuwachs pro Tag d","param":{"default":400,"min":0,"max":800,"step":50,"unit":"Aufrufe/Tag"}},{"key":"b","type":"exp","variant":"exp","label":"Video B","a0Name":"Startwert","a0":{"default":200,"min":0,"max":600,"step":50,"unit":"Aufrufe"},"paramName":"Wachstumsfaktor q","param":{"default":1.2,"min":1.1,"max":2,"step":0.1,"unit":""}}]},"span":4,"col":0,"row":2},{"id":"b5","type":"exampleTable","config":{"caption":"Die ersten Tage in Zahlen (Video B gerundet)","header":["Tag n","0","1","2","3","4","5"],"rows":[{"label":"Video A","variant":"linear","values":["200","600","1.000","1.400","1.800","2.200"]},{"label":"Video B","variant":"exp","values":["200","240","288","346","415","498"]}]},"span":4,"col":0,"row":3},{"id":"b6","type":"task","config":{"prompt":"Untersuche die Tabelle. Bestimme für Video A, wie viel von Tag zu Tag dazukommt, und für Video B, mit welcher Zahl man von Tag zu Tag multipliziert.","stars":1,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"Video A: Es kommen jeden Tag {{d}} Aufrufe dazu. Das ist die \u003cstrong>Differenz\u003c/strong> benachbarter Werte.\u003cbr>Video B: Man multipliziert jeden Tag mit {{q}}. Das ist der \u003cstrong>Quotient\u003c/strong> benachbarter Werte (rechne mit den Werten von Tag 0 und Tag 1).","fields":[{"id":"d","type":"number","unit":"","expected":400,"options":[]},{"id":"q","type":"number","unit":"","expected":"1,2; 1.2","options":[]}],"hints":["Für A: 600 − 200, dann 1000 − 600. Kommt immer dasselbe heraus?","Für B: 240 : 200. Prüfe mit 288 : 240 nach."],"solution":""},"span":4,"col":0,"row":4},{"id":"b7","type":"phaseHeading","config":{"tag":"Beispiel exponentielles Wachstum","title":""},"span":4,"col":0,"row":5},{"id":"b11","type":"context","config":{"html":"\u003cstrong>Musterbeispiel\u003c/strong>\u003cbr>Ein Sparbuch startet mit 1500 € und wird jährlich mit 3,5 % verzinst.\u003cbr>Wachstumsfaktor: \u003cspan class=\"formula\">a = 1 + 3,5/100 = 1,035\u003c/span>\u003cbr>Bestand nach n Jahren: \u003cspan class=\"formula\">f(n) = 1500 · 1,035ⁿ\u003c/span>\u003cbr>Nach 8 Jahren: \u003cspan class=\"formula\">f(8) = 1500 · 1,035⁸ = 1.975,21 €\u003c/span>\u003cbr>Beachte: Man multipliziert den Startwert, man addiert nicht achtmal 3,5 % von 1500 €."},"span":4,"col":0,"row":6},{"id":"b12","type":"phaseHeading","config":{"tag":"Übung","title":"Erkennen, aufstellen, berechnen"},"span":4,"col":0,"row":7},{"id":"b13","type":"task","config":{"prompt":"Gib zu jedem Prozentsatz den Wachstumsfaktor an – und umgekehrt.","stars":1,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"Zunahme um 12 % &nbsp;→&nbsp; a = {{q1}}\u003cbr>Zunahme um 3,5 % &nbsp;→&nbsp; a = {{q2}}\u003cbr>a = 0,85 &nbsp;→&nbsp; Abnahme um {{p3}} %\u003cbr>a = 1,5 &nbsp;→&nbsp; Zunahme um {{p4}} %","fields":[{"id":"q1","type":"number","unit":"","expected":"1,12; 1.12","options":[]},{"id":"q2","type":"number","unit":"","expected":"1,035; 1.035","options":[]},{"id":"p3","type":"number","unit":"","expected":15,"options":[]},{"id":"p4","type":"number","unit":"","expected":50,"options":[]}],"hints":["Zunahme: q = 1 + p/100. Abnahme: q = 1 − p/100.","Bei q = 0,85 fehlen 0,15 auf 1 – das sind 15 %."],"solution":""},"span":4,"col":0,"row":8},{"id":"b14","type":"task","config":{"prompt":"Entscheide für jede Situation, ob sie linear oder exponentiell wächst, und begründe deine Entscheidung auf der Rechenfläche.","stars":2,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"a) Ein Handyvertrag kostet 12 € im Monat. Die Gesamtkosten nach n Monaten wachsen {{s1}}\u003cbr>b) Eine Alge bedeckt jeden Tag 30 % mehr Fläche als am Vortag. Die Fläche wächst {{s2}}\u003cbr>c) Ein Sparschwein enthält 40 € und wird jede Woche um 5 € voller. Der Inhalt wächst {{s3}}\u003cbr>d) Ein Auto verliert jedes Jahr 15 % seines Wertes. Der Wert ändert sich {{s4}}","fields":[{"id":"s1","type":"choice","unit":"","expected":"lin","options":[{"value":"lin","label":"linear"},{"value":"exp","label":"exponentiell"}]},{"id":"s2","type":"choice","unit":"","expected":"exp","options":[{"value":"lin","label":"linear"},{"value":"exp","label":"exponentiell"}]},{"id":"s3","type":"choice","unit":"","expected":"lin","options":[{"value":"lin","label":"linear"},{"value":"exp","label":"exponentiell"}]},{"id":"s4","type":"choice","unit":"","expected":"exp","options":[{"value":"lin","label":"linear"},{"value":"exp","label":"exponentiell"}]}],"hints":["Frage dich: Kommt jeden Schritt dieselbe Zahl dazu – oder derselbe Anteil?","„Um 30 % mehr als am Vortag\" heißt: mal 1,3. Das ist ein Faktor, keine feste Zahl."],"solution":""},"span":4,"col":0,"row":9},{"id":"b15","type":"sortTask","config":{"prompt":"Bringe die Schritte in die richtige Reihenfolge: So prüfst du, ob eine Wertetabelle exponentielles Wachstum zeigt.","stars":2,"knobel":false,"drawpad":false,"drawpadHeight":240,"items":["Prüfe, ob die Zeitschritte gleich groß sind.","Teile jeden Wert durch seinen Vorgänger: f(n+1) : f(n).","Vergleiche alle Quotienten miteinander.","Sind alle Quotienten gleich, liegt exponentielles Wachstum vor.","Der gemeinsame Quotient ist der Wachstumsfaktor q."]},"span":4,"col":0,"row":10},{"id":"b16","type":"task","config":{"prompt":"In einem Waldstück stehen 8000 Bäume. Der Bestand nimmt jährlich um 2 % zu. Stelle den Term auf und berechne den Bestand nach 10 Jahren (auf ganze Bäume gerundet).","stars":2,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"Wachstumsfaktor: a = {{q}}\u003cbr>Term: \u003cspan class=\"formula\">f(n) = 8000 ·\u003c/span> {{basis}} \u003cspan class=\"formula\">ⁿ\u003c/span>\u003cbr>Bestand nach 10 Jahren: {{f10}} Bäume","fields":[{"id":"q","type":"number","unit":"","expected":"1,02; 1.02","options":[]},{"id":"basis","type":"number","unit":"","expected":"1,02; 1.02","options":[]},{"id":"f10","type":"number","unit":"","expected":"9752; 9752 Bäume","options":[]}],"hints":["+ 2 % bedeutet q = 1 + 2/100.","Tippe 8000 · 1,02^10 in den Taschenrechner – die Taste heißt meist xʸ oder ^."],"solution":""},"span":4,"col":0,"row":11},{"id":"b17","type":"task","config":{"prompt":"Ein Auto kostet neu 24 000 €. Sein Wert nimmt jährlich um 15 % ab. Berechne den Wert nach 5 Jahren (auf ganze Euro gerundet) und erkläre auf der Rechenfläche, warum das Auto nicht nach 7 Jahren wertlos ist.","stars":2,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"Wachstumsfaktor: a = {{q}}\u003cbr>Wert nach 5 Jahren: {{w5}} €","fields":[{"id":"q","type":"number","unit":"","expected":"0,85; 0.85","options":[]},{"id":"w5","type":"number","unit":"","expected":"10649; 10649 €","options":[]}],"hints":["Abnahme um 15 % heißt q = 1 − 0,15.","Jedes Jahr gehen 15 % vom AKTUELLEN Wert weg, nicht 15 % vom Neupreis."],"solution":""},"span":4,"col":0,"row":12},{"id":"b18","type":"task","config":{"prompt":"1500 € werden mit 3,5 % pro Jahr verzinst. Bestimme mit einer Wertetabelle, nach wie vielen vollen Jahren zum ersten Mal mehr als 2000 € auf dem Konto sind.","stars":3,"knobel":false,"drawpad":true,"drawpadHeight":460,"template":"Guthaben nach 8 Jahren: {{g8}} €\u003cbr>Erstmals über 2000 € nach {{n}} Jahren","fields":[{"id":"g8","type":"number","unit":"","expected":"1.975,21; 1.975,21 €","options":[]},{"id":"n","type":"number","unit":"","expected":9,"options":[]}],"hints":["f(n) = 1500 · 1,035ⁿ. Rechne der Reihe nach für n = 8, 9, 10 …","Nach 8 Jahren sind es noch keine 2000 € – probiere ein Jahr weiter."],"solution":""},"span":4,"col":0,"row":13},{"id":"b19","type":"phaseHeading","config":{"tag":"Zum Knobeln","title":"Wer überholt wen – und warum immer?"},"span":4,"col":0,"row":14},{"id":"b20","type":"task","config":{"prompt":"Zurück zu den beiden Videos. Bestimme mit einer Wertetabelle den ersten Tag, an dem Video B mehr Aufrufe hat als Video A. Begründe anschließend, warum exponentielles Wachstum ein lineares Wachstum immer irgendwann überholt – egal, wie groß der Zuwachs d des linearen Wachstums ist.","stars":3,"knobel":true,"drawpad":true,"drawpadHeight":460,"template":"Video B liegt erstmals an Tag {{tag}} vorn.","fields":[{"id":"tag","type":"number","unit":"","expected":21,"options":[]}],"hints":["Rechne A(n) = 200 + 400 · n und B(n) = 200 · 1,2ⁿ für n = 19, 20, 21 …","Überlege beim Begründen, wie groß der tägliche Zuwachs bei B wird, wenn der Bestand schon sehr groß ist."],"solution":""},"span":4,"col":0,"row":15}],"solutionMode":false,"previewMode":false};
+document.getElementById("wbRoot").outerHTML = window.WBRuntime.renderBody(window.WB_PROJECT);
+window.WBRuntime.mount(window.WB_PROJECT);
+</script>
+</body>
+</html>
