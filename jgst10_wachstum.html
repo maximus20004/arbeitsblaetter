@@ -717,6 +717,60 @@ body.exporting:not(.wb-solution) .hint-area { display: none !important; }
 canvas.drawpad-canvas { cursor: crosshair; }
 canvas.drawpad-canvas.is-erasing { cursor: cell; }
 
+/* Die Geste auf der Schreibfläche gehört immer uns – niemals dem Browser.
+   Gäbe man sie mit touch-action: auto zurück, blättert der Apple Pencil in
+   Safari die Seite, statt zu schreiben (siehe Kommentar in engine.js).
+   Das Blättern mit dem Finger führt die Engine selbst aus. */
+canvas.drawpad-canvas { touch-action: none !important; }
+
+/* Hauptweg zum Schreiben – deutlich sichtbar, nicht als Zusatzknopf. */
+.drawpad-toolbar .tool-fullscreen {
+  background: var(--accent-primary-soft);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* ---------- Vollbild-Schreibmodus ---------- */
+.calc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  gap: 8px;
+}
+.calc-overlay-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.calc-overlay-title {
+  flex: 1 1 auto;
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.calc-overlay .drawpad-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 0;
+}
+.calc-overlay .drawpad-canvas {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+}
+/* Seite dahinter stillstellen, damit beim Schreiben nichts verrutscht. */
+body.wb-vollbild { overflow: hidden; }
+@media print { .calc-overlay { display: none !important; } }
+
 /* Radierer: aktiv sichtbar markiert, sonst rät man, welches Werkzeug greift. */
 .drawpad-toolbar .tool-active {
   background: var(--accent-primary);
@@ -942,14 +996,24 @@ select.choice.field-bad {
    * Striche, die keiner wollte. Ein harter „nur Stift"-Zwang wäre aber falsch:
    * wer kein Pencil dabei hat, könnte dann gar nichts mehr aufschreiben.
    * Deshalb entscheidet das Blatt selbst: Sobald auf der Seite EINMAL mit einem
-   * Stift geschrieben wurde, gilt für alle Flächen Stift-Betrieb – Finger
-   * zeichnen nicht mehr, sondern scrollen (Handballenschutz). Wer nie einen
-   * Stift benutzt, schreibt unverändert mit dem Finger weiter.
+   * Stift geschrieben wurde, gilt für alle Flächen Stift-Betrieb – der Finger
+   * zeichnet dann nicht mehr, sondern blättert.
    * stiftModus: "auto" (Voreinstellung) | "stift" (erzwungen) | "alle".
+   *
+   * WICHTIG – hier steckte ein Fehler, der das Schreiben auf dem iPad praktisch
+   * unmöglich gemacht hat: Früher wurde für den Finger-Betrieb `touch-action`
+   * der Fläche auf "auto" zurückgestellt. Damit darf Safari die Geste aber
+   * selbst auswerten – und auf dem iPad blättert der Apple Pencil in Seiten,
+   * sobald er das darf. Ergebnis: Der erste Strich kam noch an, danach schob
+   * jeder weitere Strich das Arbeitsblatt weg.
+   *
+   * Deshalb gilt jetzt: `touch-action: none` bleibt dauerhaft auf der Fläche
+   * (siehe worksheet.css), die Geste gehört immer uns. Der Handballenschutz
+   * passiert ausschließlich in JavaScript, und das Blättern mit dem Finger
+   * führen wir selbst aus (siehe Fingerschub in createDrawPad).
    */
   var stiftModus = "auto";
   var stiftGesehen = false;
-  var alleZeichenflaechen = [];
   var stiftHinweisGezeigt = false;
 
   function nurStift() {
@@ -958,33 +1022,32 @@ select.choice.field-bad {
     return stiftGesehen;
   }
 
-  // Im Stift-Betrieb soll der Finger die Seite scrollen können – dafür muss
-  // touch-action auf der Fläche wieder freigegeben werden.
-  function aktualisiereZeigerverhalten() {
-    var frei = nurStift();
-    for (var i = 0; i < alleZeichenflaechen.length; i++) {
-      alleZeichenflaechen[i].style.touchAction = frei ? "auto" : "none";
-    }
-  }
-
   function setStiftModus(modus) {
     stiftModus = (modus === "stift" || modus === "alle") ? modus : "auto";
-    aktualisiereZeigerverhalten();
   }
 
   function merkeStift() {
-    if (stiftGesehen) return;
     stiftGesehen = true;
-    aktualisiereZeigerverhalten();
   }
+
+  /* Striche werden NICHT in Bildschirmpunkten gespeichert, sondern in einem
+   * festen Rechenblatt-Maß: 1000 Einheiten entsprechen der Breite der Fläche.
+   * Dadurch bleibt Geschriebenes unverändert, wenn dieselbe Fläche größer
+   * dargestellt wird – genau das braucht der Vollbild-Schreibmodus. */
+  var LOGISCHE_BREITE = 1000;
 
   function createDrawPad(canvas) {
     var ctx = canvas.getContext("2d");
     var drawing = false, current = null, strokes = [];
     var color = getCssVar("--ink");
-    var lineWidth = 2.5;
+    var lineWidth = 2.5 * 2;          // in logischen Einheiten (~2,5 px bei 500 px Breite)
     var radiert = false;
-    var RADIER_BREITE = 24;
+    var RADIER_BREITE = 24 * 2;
+
+    function massstab() {
+      var rect = canvas.getBoundingClientRect();
+      return rect.width > 0 ? rect.width / LOGISCHE_BREITE : 1;
+    }
 
     function resize() {
       var rect = canvas.getBoundingClientRect();
@@ -992,12 +1055,14 @@ select.choice.field-bad {
       var dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var s = dpr * (rect.width / LOGISCHE_BREITE);
+      ctx.setTransform(s, 0, 0, s, 0, 0);
       redraw();
     }
     function redraw() {
       var rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
+      var m = massstab();
+      ctx.clearRect(0, 0, rect.width / m, rect.height / m);
       for (var i = 0; i < strokes.length; i++) drawStroke(strokes[i]);
     }
     function drawStroke(s) {
@@ -1017,17 +1082,27 @@ select.choice.field-bad {
     }
     function posFromEvent(e) {
       var rect = canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      var m = rect.width > 0 ? rect.width / LOGISCHE_BREITE : 1;
+      return { x: (e.clientX - rect.left) / m, y: (e.clientY - rect.top) / m };
     }
+
+    // Fingerschub: Im Stift-Betrieb zeichnet der Finger nicht, soll aber auch
+    // nicht wirkungslos sein. Weil touch-action dauerhaft "none" ist, blättert
+    // Safari nicht von selbst – also schieben wir die Seite hier mit.
+    var schubId = null, schubX = 0, schubY = 0;
+
     canvas.addEventListener("pointerdown", function (e) {
       if (e.pointerType === "pen") merkeStift();
-      // Im Stift-Betrieb wird Finger-Eingabe durchgelassen (= die Seite
-      // scrollt), statt einen ungewollten Strich zu hinterlassen.
       if (e.pointerType !== "pen" && nurStift()) {
+        schubId = e.pointerId;
+        schubX = e.clientX;
+        schubY = e.clientY;
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
         if (!stiftHinweisGezeigt) {
           stiftHinweisGezeigt = true;
-          showToast("Zum Schreiben den Stift benutzen – mit dem Finger kannst du scrollen.");
+          showToast("Zum Schreiben den Stift benutzen – mit dem Finger blätterst du.");
         }
+        e.preventDefault();
         return;
       }
       canvas.setPointerCapture(e.pointerId);
@@ -1043,15 +1118,29 @@ select.choice.field-bad {
       e.preventDefault();
     });
     canvas.addEventListener("pointermove", function (e) {
+      if (schubId !== null && e.pointerId === schubId) {
+        // Im Vollbild-Schreibmodus gibt es nichts zu blättern.
+        if (!document.body.classList.contains("wb-vollbild")) {
+          window.scrollBy(schubX - e.clientX, schubY - e.clientY);
+        }
+        schubX = e.clientX;
+        schubY = e.clientY;
+        e.preventDefault();
+        return;
+      }
       if (!drawing) return;
       current.points.push(posFromEvent(e));
       redraw();
       e.preventDefault();
     }, { passive: false });
-    function endStroke() { drawing = false; current = null; }
+    function endStroke(e) {
+      if (e && schubId !== null && e.pointerId === schubId) schubId = null;
+      drawing = false;
+      current = null;
+    }
     canvas.addEventListener("pointerup", endStroke);
     canvas.addEventListener("pointercancel", endStroke);
-    canvas.addEventListener("pointerleave", function () { if (drawing) endStroke(); });
+    canvas.addEventListener("pointerleave", function (e) { if (drawing) endStroke(e); });
 
     requestAnimationFrame(resize);
 
@@ -1060,12 +1149,11 @@ select.choice.field-bad {
     canvas.addEventListener("pointerup", changed);
     canvas.addEventListener("pointercancel", changed);
 
-    alleZeichenflaechen.push(canvas);
-    aktualisiereZeigerverhalten();
-
+    // Setzt zusätzlich die Strichstärke des Stifts zurück, wenn der Radierer
+    // über setColor/setWidth abgewählt wird (siehe unten).
     return {
       setColor: function (c) { color = c; radiert = false; },
-      setWidth: function (w) { lineWidth = w; radiert = false; },
+      setWidth: function (w) { lineWidth = w * 2; radiert = false; },
       setEraser: function (an) { radiert = !!an; },
       isEraser: function () { return radiert; },
       undo: function () { strokes.pop(); redraw(); changed(); },
@@ -1139,6 +1227,69 @@ select.choice.field-bad {
       b.addEventListener("click", zeigeWerkzeug);
     });
     redrawCallbacks.push(pad.resize);
+
+    /* Vollbild-Schreibmodus.
+     *
+     * Handschrift auf einer langen Seite steht immer in Konkurrenz zum
+     * Blättern: Man schreibt zwei Wörter, dann will man weiter, verschiebt
+     * dabei das Blatt und verliert die Zeile. Im Vollbild ist die Seite
+     * dahinter gesperrt, es gibt nichts zu verschieben – und viel mehr Platz.
+     *
+     * Umgesetzt wird das, indem dieselbe Fläche kurzzeitig in eine Hülle
+     * umgehängt wird: gleiche Zeichenfläche, gleiche Striche, gleicher
+     * Zwischenspeicher. Weil Striche im festen Blattmaß liegen (siehe
+     * LOGISCHE_BREITE), sieht Geschriebenes danach unverändert aus.
+     */
+    var vollbildBtn = null;
+    if (wrapEl.closest(".calc-area")) {
+      vollbildBtn = mkToolBtn("⤢ Groß schreiben", "Fläche bildschirmfüllend öffnen", oeffneVollbild);
+      vollbildBtn.classList.remove("btn-ghost");
+      vollbildBtn.classList.add("tool-fullscreen");
+      // Ganz nach vorn: Auf dem iPad ist das der Weg zum ruhigen Schreiben,
+      // nicht eine Zusatzoption am Ende der Leiste.
+      toolbar.insertBefore(vollbildBtn, toolbar.firstChild);
+    }
+
+    function oeffneVollbild() {
+      if (document.querySelector(".calc-overlay")) return;
+      var platzhalter = document.createElement("div");
+      wrapEl.parentNode.insertBefore(platzhalter, wrapEl);
+
+      var huelle = document.createElement("div");
+      huelle.className = "calc-overlay";
+      var leiste = document.createElement("div");
+      leiste.className = "calc-overlay-bar";
+      var titel = document.createElement("span");
+      titel.className = "calc-overlay-title";
+      var aufgabe = platzhalter.closest(".wb-block");
+      var nummer = aufgabe ? aufgabe.querySelector(".task-num") : null;
+      titel.textContent = nummer ? "Rechenweg zu Aufgabe " + nummer.textContent : "Rechenweg";
+      var fertig = mkToolBtn("✓ Fertig", "Zurück zum Arbeitsblatt", schliesse);
+      // btn-ghost (aus mkToolBtn) würde den farbigen Hintergrund überschreiben.
+      fertig.classList.remove("btn-ghost");
+      fertig.classList.add("btn-primary");
+      leiste.appendChild(titel);
+      leiste.appendChild(fertig);
+      huelle.appendChild(leiste);
+      huelle.appendChild(wrapEl);
+      document.body.appendChild(huelle);
+      document.body.classList.add("wb-vollbild");
+      if (vollbildBtn) vollbildBtn.style.display = "none";
+      requestAnimationFrame(function () { pad.resize(); });
+
+      function schliesse() {
+        platzhalter.parentNode.insertBefore(wrapEl, platzhalter);
+        platzhalter.remove();
+        huelle.remove();
+        document.body.classList.remove("wb-vollbild");
+        if (vollbildBtn) vollbildBtn.style.display = "";
+        requestAnimationFrame(function () { pad.resize(); });
+        document.removeEventListener("keydown", beiEscape);
+      }
+      function beiEscape(e) { if (e.key === "Escape") schliesse(); }
+      document.addEventListener("keydown", beiEscape);
+    }
+
     // Für das Zwischenspeichern merken, welche Zeichenfläche zu welchem
     // Canvas gehört – die Striche werden nach einem Neuladen wiederhergestellt.
     if (canvas.id) {
