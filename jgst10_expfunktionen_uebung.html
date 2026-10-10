@@ -897,6 +897,74 @@ select.choice.field-bad {
   border-radius: 9px;
   margin: 0 0 10px;
 }
+
+/* ---------- Freischaltung von Aufgaben ----------
+   Ein gesperrter Baustein bleibt im Fluss stehen: Statt des Inhalts steht ein
+   Platzhalter da, der sagt, woran es hängt. Im PDF-Export und auf dem
+   Lösungsblatt ist dagegen IMMER alles sichtbar – ein Ausdruck mit fehlenden
+   Aufgaben wäre wertlos. */
+.wb-block.is-locked > .wb-locked-content { display: none; }
+.wb-block.is-locked {
+  border-style: dashed;
+  box-shadow: none;
+  background: transparent;
+}
+.wb-lock-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 2px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+.wb-lock-icon { font-size: 1.3rem; flex: none; }
+.wb-block.just-unlocked {
+  animation: wb-aufgeht 0.5s ease-out;
+}
+@keyframes wb-aufgeht {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+/* Hinweis in der Lehrerfassung und in der Baukasten-Vorschau */
+.wb-lock-badge {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+/* Beim Export alles zeigen – auch das, was gerade noch gesperrt ist. */
+body.exporting .wb-block.is-locked > .wb-locked-content { display: block; }
+body.exporting .wb-block.is-locked > .wb-lock-note { display: none; }
+body.exporting .wb-block.is-locked { border-style: solid; background: var(--paper-raised); }
+@media print {
+  .wb-block.is-locked > .wb-locked-content { display: block; }
+  .wb-block.is-locked > .wb-lock-note { display: none; }
+}
+
+/* Aufgabenstellung im Vollbild-Schreibmodus */
+.calc-overlay-task {
+  flex: 0 1 auto;
+  max-height: 26vh;
+  overflow-y: auto;
+  padding: 10px 14px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+.calc-overlay-task.is-collapsed { display: none; }
+.calc-overlay-task .calc-overlay-prompt {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+.calc-overlay-task p { margin: 0 0 6px; }
+.calc-overlay-task p:last-child { margin-bottom: 0; }
+.calc-overlay-task .answer-template { line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -1072,6 +1140,7 @@ select.choice.field-bad {
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
       var s = dpr * (rect.width / LOGISCHE_BREITE);
       ctx.setTransform(s, 0, 0, s, 0, 0);
+      rahmen = null;                // beim nächsten Aufsetzen neu messen
       redraw();
     }
     function redraw() {
@@ -1080,14 +1149,20 @@ select.choice.field-bad {
       ctx.clearRect(0, 0, rect.width / m, rect.height / m);
       for (var i = 0; i < strokes.length; i++) drawStroke(strokes[i]);
     }
-    function drawStroke(s) {
-      if (s.points.length < 1) return;
+
+    function stilSetzen(s) {
       // Radierte Striche nehmen weg statt hinzuzufügen. Weil die Fläche
       // durchsichtig ist, kommt darunter wieder das Karo zum Vorschein.
       ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
       ctx.strokeStyle = s.erase ? "rgba(0,0,0,1)" : s.color;
       ctx.lineWidth = s.width;
-      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+    }
+
+    function drawStroke(s) {
+      if (s.points.length < 1) return;
+      stilSetzen(s);
       ctx.beginPath();
       ctx.moveTo(s.points[0].x, s.points[0].y);
       if (s.points.length === 1) ctx.lineTo(s.points[0].x + 0.1, s.points[0].y + 0.1);
@@ -1095,10 +1170,52 @@ select.choice.field-bad {
       ctx.stroke();
       ctx.globalCompositeOperation = "source-over";
     }
+
+    /* Nur das NEUE Stück des laufenden Strichs zeichnen.
+     *
+     * Vorher wurde bei jeder Zeigerbewegung die gesamte Fläche neu gezeichnet.
+     * Mit jedem weiteren Strich dauerte das länger; ab einer gewissen Menge
+     * schaffte der Browser die Bildrate nicht mehr und verwarf Ereignisse –
+     * beim schnellen Schreiben fehlten dann Buchstaben. Ein angehängtes
+     * Segment kostet dagegen immer gleich wenig, egal wie voll das Blatt ist. */
+    function drawSegment(s, abIndex) {
+      if (s.points.length < 2) { drawStroke(s); return; }
+      stilSetzen(s);
+      ctx.beginPath();
+      ctx.moveTo(s.points[abIndex - 1].x, s.points[abIndex - 1].y);
+      for (var i = abIndex; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    // Das Rechteck der Fläche wird beim Aufsetzen EINMAL gemessen und dann
+    // festgehalten: getBoundingClientRect() pro Punkt würde den Browser bei
+    // jedem Messpunkt zum Neuberechnen des Layouts zwingen.
+    var rahmen = null, rahmenM = 1;
+    function rahmenMessen() {
+      rahmen = canvas.getBoundingClientRect();
+      rahmenM = rahmen.width > 0 ? rahmen.width / LOGISCHE_BREITE : 1;
+    }
     function posFromEvent(e) {
-      var rect = canvas.getBoundingClientRect();
-      var m = rect.width > 0 ? rect.width / LOGISCHE_BREITE : 1;
-      return { x: (e.clientX - rect.left) / m, y: (e.clientY - rect.top) / m };
+      if (!rahmen) rahmenMessen();
+      return { x: (e.clientX - rahmen.left) / rahmenM, y: (e.clientY - rahmen.top) / rahmenM };
+    }
+
+    /* Zwischenpunkte abholen.
+     *
+     * Ein Apple Pencil tastet deutlich häufiger ab, als der Browser
+     * pointermove-Ereignisse ausliefert. Die dazwischen liegenden Messpunkte
+     * stehen in getCoalescedEvents() – ohne sie werden schnelle Striche zu
+     * geraden Linien zwischen weit auseinanderliegenden Punkten, Rundungen
+     * und kleine Buchstaben gehen dabei verloren. */
+    function messpunkte(e) {
+      if (typeof e.getCoalescedEvents === "function") {
+        try {
+          var liste = e.getCoalescedEvents();
+          if (liste && liste.length) return liste;
+        } catch (err) { /* ältere Browser: unten weiter */ }
+      }
+      return [e];
     }
 
     // Fingerschub: Im Stift-Betrieb zeichnet der Finger nicht, soll aber auch
@@ -1120,8 +1237,14 @@ select.choice.field-bad {
         e.preventDefault();
         return;
       }
-      canvas.setPointerCapture(e.pointerId);
+      // setPointerCapture kann fehlschlagen (InvalidPointerId) – etwa wenn
+      // Stift-Ereignisse beim schnellen Schreiben dicht aufeinanderfolgen.
+      // Bisher brach der Ereignisbehandler an dieser Stelle ab und der ganze
+      // Strich ging verloren; der Buchstabe fehlte einfach. Das Einfangen ist
+      // aber nur Komfort (Striche über den Rand hinaus), kein Muss.
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       drawing = true;
+      rahmenMessen();
       current = {
         color: color,
         width: radiert ? RADIER_BREITE : lineWidth,
@@ -1129,7 +1252,7 @@ select.choice.field-bad {
         points: [posFromEvent(e)]
       };
       strokes.push(current);
-      redraw();
+      drawStroke(current);          // der aufgesetzte Punkt
       e.preventDefault();
     });
     canvas.addEventListener("pointermove", function (e) {
@@ -1144,8 +1267,10 @@ select.choice.field-bad {
         return;
       }
       if (!drawing) return;
-      current.points.push(posFromEvent(e));
-      redraw();
+      var ab = current.points.length;
+      var punkte = messpunkte(e);
+      for (var i = 0; i < punkte.length; i++) current.points.push(posFromEvent(punkte[i]));
+      if (current.points.length > ab) drawSegment(current, ab);
       e.preventDefault();
     }, { passive: false });
     function endStroke(e) {
@@ -1155,7 +1280,14 @@ select.choice.field-bad {
     }
     canvas.addEventListener("pointerup", endStroke);
     canvas.addEventListener("pointercancel", endStroke);
-    canvas.addEventListener("pointerleave", function (e) { if (drawing) endStroke(e); });
+    // Früher endete der Strich auch bei "pointerleave". Weil der Zeiger beim
+    // Aufsetzen eingefangen wird (setPointerCapture), kommen die Ereignisse
+    // aber weiter an, selbst wenn der Stift kurz über den Rand der Fläche
+    // hinausfährt – etwa bei einem hohen Buchstaben am oberen Rand. Der
+    // abgebrochene Strich sah dann aus, als hätte das Blatt Zeichen
+    // verschluckt. Jetzt endet ein Strich nur noch beim Absetzen oder wenn
+    // das System den Zeiger wirklich entzieht.
+    canvas.addEventListener("lostpointercapture", function (e) { if (drawing) endStroke(e); });
 
     requestAnimationFrame(resize);
 
@@ -1283,9 +1415,36 @@ select.choice.field-bad {
       // btn-ghost (aus mkToolBtn) würde den farbigen Hintergrund überschreiben.
       fertig.classList.remove("btn-ghost");
       fertig.classList.add("btn-primary");
+
+      /* Aufgabenstellung mitnehmen: Im Vollbild ist das Blatt dahinter
+       * verdeckt – ohne den Text müsste man zum Nachlesen jedes Mal schließen.
+       * Übernommen werden der Aufgabentext und, falls vorhanden, der
+       * mehrteilige Arbeitsauftrag offener Aufgaben. Der Bereich ist
+       * einklappbar und hat eine eigene Bildlaufleiste, damit bei langen
+       * Aufträgen trotzdem genug Platz zum Schreiben bleibt. */
+      var auftrag = null, auftragBtn = null;
+      if (aufgabe) {
+        var teile = [];
+        var prompt = aufgabe.querySelector(".task-prompt");
+        if (prompt) teile.push('<p class="calc-overlay-prompt">' + prompt.innerHTML + "</p>");
+        var vorlage = aufgabe.querySelector(".answer-template.answer-text");
+        if (vorlage) teile.push(vorlage.innerHTML);
+        if (teile.length) {
+          auftrag = document.createElement("div");
+          auftrag.className = "calc-overlay-task";
+          auftrag.innerHTML = teile.join("");
+          auftragBtn = mkToolBtn("Aufgabe ausblenden", "Aufgabenstellung ein- oder ausblenden", function () {
+            var zu = auftrag.classList.toggle("is-collapsed");
+            auftragBtn.textContent = zu ? "Aufgabe einblenden" : "Aufgabe ausblenden";
+          });
+        }
+      }
+
       leiste.appendChild(titel);
+      if (auftragBtn) leiste.appendChild(auftragBtn);
       leiste.appendChild(fertig);
       huelle.appendChild(leiste);
+      if (auftrag) huelle.appendChild(auftrag);
       huelle.appendChild(wrapEl);
       document.body.appendChild(huelle);
       document.body.classList.add("wb-vollbild");
@@ -1907,6 +2066,44 @@ select.choice.field-bad {
     return false;
   }
 
+  /* ---------- Freischalten von Bausteinen ----------
+   *
+   * Ein Baustein kann an eine Aufgabe gekoppelt sein: Er erscheint erst, wenn
+   * diese Aufgabe vollständig richtig geprüft wurde. Bis dahin steht an seiner
+   * Stelle ein Platzhalter, der sagt, was zu tun ist – die Schüler sollen
+   * sehen, dass da noch etwas kommt.
+   *
+   * Zustand steht im DOM (data-locked-by am Baustein) und wird zusätzlich im
+   * Zwischenspeicher gesichert: Die Prüf-Rückmeldung selbst wird bewusst nicht
+   * wiederhergestellt, eine einmal geöffnete Aufgabe soll nach dem Neuladen
+   * aber offen bleiben.
+   */
+  var freigeschaltet = {};
+
+  function schalteFrei(uid, leise) {
+    if (freigeschaltet[uid]) return;
+    freigeschaltet[uid] = true;
+    var neue = document.querySelectorAll('[data-locked-by="' + uid + '"]');
+    Array.prototype.forEach.call(neue, function (block) {
+      block.classList.remove("is-locked");
+      var note = block.querySelector(".wb-lock-note");
+      if (note) note.remove();
+      if (!leise) block.classList.add("just-unlocked");
+    });
+    if (neue.length) {
+      redrawCallbacks.forEach(function (fn) { try { fn(); } catch (e) {} });
+      if (!leise) {
+        showToast(neue.length === 1 ? "Die nächste Aufgabe ist jetzt freigeschaltet."
+          : "Es geht weiter – neue Aufgaben sind freigeschaltet.");
+        scheduleSave();
+      }
+    }
+  }
+
+  function freigeschalteteListe() {
+    return Object.keys(freigeschaltet);
+  }
+
   function checkFieldsTask(blockId, fields) {
     var allOk = true, leer = 0, falsch = 0;
     fields.forEach(function (f) {
@@ -1930,6 +2127,7 @@ select.choice.field-bad {
       msg = leer ? "Da fehlt noch eine Antwort." : "Noch nicht richtig – schau dir ggf. einen Tipp an.";
     }
     setFeedback("wb-" + blockId + "-fb", allOk, msg);
+    if (allOk) schalteFrei(blockId);
   }
 
   /* ---------- Sortier-Aufgabe: Drag&Drop-Umsortieren + Prüfung ----------
@@ -1954,7 +2152,7 @@ select.choice.field-bad {
   function storeDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
   function collectState(mitZeichnungen) {
-    var s = { v: 1, fields: {}, sort: {}, pads: {} };
+    var s = { v: 1, fields: {}, sort: {}, pads: {}, frei: freigeschalteteListe() };
     Array.prototype.forEach.call(document.querySelectorAll(".field-input, select.choice"), function (e) {
       if (e.id && String(e.value) !== "") s.fields[e.id] = e.value;
     });
@@ -1992,6 +2190,9 @@ select.choice.field-bad {
       var pad = padRegistry[id];
       if (pad) { pad.setStrokes(s.pads[id]); etwas = true; }
     });
+    // Einmal geöffnete Bausteine bleiben offen – ohne Hinweis und ohne Toast,
+    // sonst ploppt beim Neuladen alles noch einmal auf.
+    (s.frei || []).forEach(function (uid) { schalteFrei(uid, true); });
     return etwas;
   }
 
@@ -2201,6 +2402,7 @@ select.choice.field-bad {
     var items = Array.prototype.slice.call(container.querySelectorAll(".sort-item"));
     var ok = items.length > 0 && items.every(function (it, i) { return Number(it.dataset.key) === i; });
     setFeedback("wb-" + uid + "-fb", ok, ok ? "Richtig einsortiert." : "Noch nicht in der richtigen Reihenfolge – vertausche zwei Elemente.");
+    if (ok) schalteFrei(uid);
   }
 
   /* ---------- Vorlagen-Rendering ({{id}} -> Eingabefeld) ---------- */
@@ -2546,6 +2748,7 @@ select.choice.field-bad {
     renderTemplateSolution: renderTemplateSolution,
     seededShuffle: seededShuffle, wireSortList: wireSortList, checkSortTask: checkSortTask,
     moveSortItem: moveSortItem, wireAutosave: wireAutosave,
+    schalteFrei: schalteFrei,
     offerDownload: offerDownload, exportPdf: exportPdf, buildPdfBlob: buildPdfBlob,
     ensurePdfLibs: ensurePdfLibs,
     computePagination: computePagination, computePageBreakOffsets: computePageBreakOffsets,
@@ -3914,9 +4117,24 @@ select.choice.field-bad {
   // project.previewMode   → Live-Vorschau im Baukasten: kein PDF-Knopf in der
   //                         Topbar, weil dort jsPDF/html2canvas bewusst nicht
   //                         mitgeladen werden (der Baukasten exportiert selbst).
+  // Vorab durchnummerieren: Für den Hinweis „Löse zuerst Aufgabe 3" muss die
+  // Nummer der vorausgesetzten Aufgabe bekannt sein, auch wenn sie erst später
+  // gerendert wird.
+  function aufgabenNummern(blocks) {
+    var nr = 0, map = {};
+    (blocks || []).forEach(function (b) {
+      if (b.type !== "task" && b.type !== "sortTask") return;
+      if (b.config && b.config.knobel) { map[b.id] = "die Knobelaufgabe"; return; }
+      nr++;
+      map[b.id] = "Aufgabe " + nr;
+    });
+    return map;
+  }
+
   function renderBody(project) {
     var taskNumber = 0;
     var solution = !!project.solutionMode;
+    var nummern = aufgabenNummern(project.blocks);
     var rows = computeRows(project.blocks);
     var blocksHtml = rows.map(function (row) {
       var rowKeepWithNext = row.some(function (item) { return !!item.def.keepWithNext; });
@@ -3928,7 +4146,31 @@ select.choice.field-bad {
         var inner = def.render(b.config, b.id, ctx);
         var cls = "wb-block" + (def.noCard ? "" : " card");
         var gridCol = def.noCard ? ("1 / span 4") : ((item.col + 1) + " / span " + item.span);
-        return '<div class="' + cls + '" data-block-id="' + b.id + '" style="grid-column: ' + gridCol + ';">' + inner + "</div>";
+
+        // Freischaltung: Der Baustein hängt an einer Aufgabe und erscheint erst,
+        // wenn diese richtig gelöst ist. Auf dem Lösungsblatt und in der
+        // Baukasten-Vorschau ist alles sichtbar – dort wäre Verstecken nur im Weg.
+        var sperre = b.config && b.config.lockedBy;
+        var zusatz = "";
+        if (sperre && nummern[sperre]) {
+          if (solution || ctx.preview) {
+            inner = '<div class="wb-lock-badge">🔒 Erscheint erst, wenn ' +
+              esc(nummern[sperre]) + " richtig gelöst ist</div>" + inner;
+          } else {
+            cls += " is-locked";
+            zusatz = ' data-locked-by="' + esc(sperre) + '"';
+            // Der echte Inhalt kommt in EINEN Container. Nur der wird aus- und
+            // eingeblendet – würde man die einzelnen Kinder verstecken und im
+            // Export wieder einblenden, verlören sie dabei ihr eigenes Layout
+            // (aus display:flex würde display:block).
+            inner = '<div class="wb-lock-note"><span class="wb-lock-icon">🔒</span>' +
+              "<span>Diese Aufgabe erscheint, sobald <strong>" + esc(nummern[sperre]) +
+              "</strong> richtig gelöst ist.</span></div>" +
+              '<div class="wb-locked-content">' + inner + "</div>";
+          }
+        }
+        return '<div class="' + cls + '" data-block-id="' + b.id + '"' + zusatz +
+          ' style="grid-column: ' + gridCol + ';">' + inner + "</div>";
       }).join("");
       // Eine Zeile, die nur den (im Schülerblatt unsichtbaren) Umbruch-
       // Baustein enthält, darf dort auch keinen Abstand hinterlassen. Die
