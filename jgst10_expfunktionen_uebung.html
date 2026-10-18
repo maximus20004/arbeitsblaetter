@@ -548,17 +548,35 @@ select.choice {
   padding: 0;
 }
 .color-dot.active { border-color: var(--ink); }
-canvas.drawpad-canvas {
-  width: 100%; height: 220px;
-  display: block;
+/* Karo und Schreibfläche liegen bewusst in zwei Schichten übereinander:
+   Das Karo wird einmal gemalt und bleibt dann liegen, die durchsichtige
+   Fläche darüber bekommt jede Strichbewegung ab. Lägen beide zusammen,
+   müsste Safari bei jedem Strichstück auch den Verlauf neu rechnen. */
+.drawpad-paper {
+  position: relative;
+  border-radius: 8px;
+}
+.drawpad-karo {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
   background-color: var(--paper);
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: 18px 18px;
+  pointer-events: none;
+}
+canvas.drawpad-canvas {
+  width: 100%; height: 220px;
+  display: block;
+  position: relative;
+  background: transparent;
   border-radius: 8px;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   touch-action: none;
+  transform: translateZ(0);
 }
 
 .scratch-fab {
@@ -706,16 +724,30 @@ body.exporting:not(.wb-solution) .hint-area { display: none !important; }
 .calc-area .drawpad-wrap { margin-top: 0; }
 
 /* ---------- Schreiben statt markieren ----------
-   Beim Schreiben mit dem Finger hat der Browser bisher oft eine Textauswahl
-   gestartet: die halbe Aufgabe war blau hinterlegt statt beschrieben. Auf der
-   Fläche und ihrer Werkzeugleiste ist Markieren deshalb abgeschaltet – im
-   übrigen Blatt bleibt es erlaubt, dort will man Text kopieren können. */
-.drawpad-wrap,
-.drawpad-wrap * ,
-.calc-label {
+   Beim Schreiben hat der Browser oft eine Textauswahl gestartet: die halbe
+   Aufgabe war blau hinterlegt statt beschrieben.
+
+   Es reicht nicht, das Markieren nur auf der Schreibfläche abzuschalten: Ein
+   Strich beginnt leicht einen Millimeter daneben, und von dort zieht Safari
+   die Markierung über die ganze Aufgabe. Deshalb ist das Blatt insgesamt
+   nicht markierbar – ausgenommen die Eingabefelder, in denen man Text
+   auswählen und korrigieren können muss. */
+#wbWorksheet,
+#wbWorksheet *,
+.calc-overlay,
+.calc-overlay * {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+#wbWorksheet input,
+#wbWorksheet textarea,
+#wbWorksheet select,
+.calc-overlay input,
+.calc-overlay textarea,
+.calc-overlay select {
+  -webkit-user-select: text;
+  user-select: text;
 }
 canvas.drawpad-canvas { cursor: crosshair; }
 canvas.drawpad-canvas.is-erasing { cursor: cell; }
@@ -765,10 +797,32 @@ canvas.drawpad-canvas { touch-action: none !important; }
   margin: 0;
   min-height: 0;
 }
+/* Im Vollbild wächst die Fläche auf die Resthöhe. Weil das Karo jetzt in
+   einer eigenen Schicht darunter liegt, muss diese Schicht mitwachsen. */
+.calc-overlay .drawpad-paper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .calc-overlay .drawpad-canvas {
   flex: 1 1 auto;
   height: auto !important;
   min-height: 0;
+}
+
+/* Messanzeige für ?diag=1 */
+.wb-diag {
+  position: fixed;
+  left: 8px; bottom: 8px;
+  z-index: 60;
+  background: rgba(20, 20, 24, 0.86);
+  color: #fff;
+  font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 6px 10px;
+  border-radius: 8px;
+  pointer-events: none;
 }
 /* Seite dahinter stillstellen, damit beim Schreiben nichts verrutscht. */
 body.wb-vollbild { overflow: hidden; }
@@ -1113,6 +1167,66 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     stiftGesehen = true;
   }
 
+  var now = (window.performance && performance.now)
+    ? function () { return performance.now(); }
+    : function () { return Date.now(); };
+
+  /* Safari auf dem iPad fängt mit dem Stift gern eine Textmarkierung an,
+   * sobald ein Strich auch nur knapp neben der Fläche beginnt. Sichtbar wird
+   * das als blau hinterlegter Text, der beim Weiterschreiben mitwandert.
+   * Zwei Maßnahmen greifen ineinander: das Blatt ist in worksheet.css
+   * insgesamt nicht markierbar (Eingabefelder ausgenommen), und eine schon
+   * begonnene Markierung wird beim Aufsetzen weggeräumt. */
+  function loescheMarkierung() {
+    try {
+      var sel = window.getSelection && window.getSelection();
+      if (sel && !sel.isCollapsed) sel.removeAllRanges();
+    } catch (e) {}
+  }
+  document.addEventListener("selectstart", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("input, textarea, select, [contenteditable]")) return;
+    // Nur im Blatt selbst – im Baukasten muss die Lehrkraft Text auswählen
+    // und kopieren können.
+    if (!t.closest("#wbWorksheet, .calc-overlay")) return;
+    e.preventDefault();
+  }, true);
+
+  /* Messhilfe: Das Blatt mit ?diag=1 öffnen, dann zeigt eine kleine Anzeige,
+   * wie viele Ereignisse ankommen, wie viele Zwischenpunkte dabei sind und wo
+   * die längste Lücke liegt. Damit lässt sich die Schreibleistung auf dem
+   * echten Gerät messen, statt sie zu schätzen. */
+  var diagAn = false, diagBox = null, diag = null;
+  function diagStart() {
+    diagAn = true;
+    diag = { striche: 0, ereignisse: 0, punkte: 0, luecke: 0, handler: 0, letzter: 0 };
+    diagBox = document.createElement("div");
+    diagBox.className = "wb-diag no-print";
+    document.body.appendChild(diagBox);
+    setInterval(diagZeigen, 500);
+  }
+  function diagZeigen() {
+    if (!diagBox) return;
+    diagBox.textContent =
+      "Striche " + diag.striche + " · Ereignisse " + diag.ereignisse +
+      " · Punkte " + diag.punkte +
+      " · größte Lücke " + Math.round(diag.luecke) + " ms" +
+      " · längste Rechenzeit " + (Math.round(diag.handler * 10) / 10) + " ms";
+  }
+  function diagZaehl(art, punkte, dauer) {
+    if (!diagAn) return;
+    var t = now();
+    if (art === "down") { diag.striche++; diag.letzter = t; }
+    else if (art === "move") {
+      diag.ereignisse++;
+      diag.punkte += (punkte || 1);
+      if (diag.letzter) diag.luecke = Math.max(diag.luecke, t - diag.letzter);
+      diag.letzter = t;
+      if (dauer > diag.handler) diag.handler = dauer;
+    } else if (art === "up") { diag.letzter = 0; }
+  }
+
   /* Striche werden NICHT in Bildschirmpunkten gespeichert, sondern in einem
    * festen Rechenblatt-Maß: 1000 Einheiten entsprechen der Breite der Fläche.
    * Dadurch bleibt Geschriebenes unverändert, wenn dieselbe Fläche größer
@@ -1223,13 +1337,46 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     // Safari nicht von selbst – also schieben wir die Seite hier mit.
     var schubId = null, schubX = 0, schubY = 0;
 
-    canvas.addEventListener("pointerdown", function (e) {
-      if (e.pointerType === "pen") merkeStift();
+    /* Ein laufender Strich wird über die Zeiger-Kennung verfolgt, NICHT über
+     * ein einfaches drawing-Flag.
+     *
+     * Hier steckte der Fehler, der beim schnellen Schreiben Buchstaben
+     * verschluckt hat: Safari meldet nach setPointerCapture gelegentlich sofort
+     * "lostpointercapture" – vor allem, wenn Striche dicht aufeinanderfolgen.
+     * Der Strich wurde dann mitten im Buchstaben abgebrochen, obwohl der Stift
+     * noch auf der Fläche lag. Jetzt wird das Einfangen nur noch als Zugabe
+     * benutzt; verfolgt wird der Strich über pointermove/pointerup am Fenster.
+     * Dadurch ist es auch egal, ob der Browser die Ereignisse an die Fläche
+     * oder an ein darüberliegendes Element ausliefert. */
+    var aktivId = null;
+    var letzterStift = 0;          // Zeitpunkt des letzten Stift-Ereignisses
+    var HANDBALLEN_MS = 900;
+
+    function fensterAn() {
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp, true);
+      window.addEventListener("pointercancel", onUp, true);
+    }
+    function fensterAus() {
+      window.removeEventListener("pointermove", onMove, { passive: false });
+      window.removeEventListener("pointerup", onUp, true);
+      window.removeEventListener("pointercancel", onUp, true);
+    }
+
+    function onDown(e) {
+      if (e.pointerType === "pen") { merkeStift(); letzterStift = now(); }
       if (e.pointerType !== "pen" && nurStift()) {
+        // Handballenschutz: Während ein Stiftstrich läuft – und kurz danach –
+        // ist jede Berührung der aufliegende Handballen, kein Blättern.
+        if (aktivId !== null || now() - letzterStift < HANDBALLEN_MS) {
+          e.preventDefault();
+          return;
+        }
+        if (schubId !== null) { e.preventDefault(); return; }
         schubId = e.pointerId;
         schubX = e.clientX;
         schubY = e.clientY;
-        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        fensterAn();
         if (!stiftHinweisGezeigt) {
           stiftHinweisGezeigt = true;
           showToast("Zum Schreiben den Stift benutzen – mit dem Finger blätterst du.");
@@ -1237,25 +1384,31 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
         e.preventDefault();
         return;
       }
-      // setPointerCapture kann fehlschlagen (InvalidPointerId) – etwa wenn
-      // Stift-Ereignisse beim schnellen Schreiben dicht aufeinanderfolgen.
-      // Bisher brach der Ereignisbehandler an dieser Stelle ab und der ganze
-      // Strich ging verloren; der Buchstabe fehlte einfach. Das Einfangen ist
-      // aber nur Komfort (Striche über den Rand hinaus), kein Muss.
+      if (aktivId !== null) { e.preventDefault(); return; }   // zweiter Zeiger
+      // Eine angefangene Textmarkierung würde beim nächsten Strich wieder
+      // aufblitzen – deshalb hier wegräumen.
+      loescheMarkierung();
+      // setPointerCapture kann fehlschlagen (InvalidPointerId); das ist
+      // unkritisch, weil die Ereignisse ohnehin am Fenster verfolgt werden.
       try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      aktivId = e.pointerId;
       drawing = true;
       rahmenMessen();
       current = {
         color: color,
         width: radiert ? RADIER_BREITE : lineWidth,
         erase: radiert,
-        points: [posFromEvent(e)]
+        points: []
       };
+      punktAnhaengen(current, e);
       strokes.push(current);
       drawStroke(current);          // der aufgesetzte Punkt
+      fensterAn();
+      diagZaehl("down");
       e.preventDefault();
-    });
-    canvas.addEventListener("pointermove", function (e) {
+    }
+
+    function onMove(e) {
       if (schubId !== null && e.pointerId === schubId) {
         // Im Vollbild-Schreibmodus gibt es nichts zu blättern.
         if (!document.body.classList.contains("wb-vollbild")) {
@@ -1266,35 +1419,58 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
         e.preventDefault();
         return;
       }
-      if (!drawing) return;
+      if (aktivId === null || e.pointerId !== aktivId) return;
+      if (e.pointerType === "pen") letzterStift = now();
+      var t0 = now();
       var ab = current.points.length;
       var punkte = messpunkte(e);
-      for (var i = 0; i < punkte.length; i++) current.points.push(posFromEvent(punkte[i]));
+      for (var i = 0; i < punkte.length; i++) punktAnhaengen(current, punkte[i]);
       if (current.points.length > ab) drawSegment(current, ab);
+      diagZaehl("move", punkte.length, now() - t0);
       e.preventDefault();
-    }, { passive: false });
-    function endStroke(e) {
-      if (e && schubId !== null && e.pointerId === schubId) schubId = null;
+    }
+
+    /* Messpunkte werden gerundet und ausgedünnt gespeichert.
+     * Beides zusammen macht den gespeicherten Zustand um ein Mehrfaches
+     * kleiner – und damit das Zwischenspeichern (JSON + localStorage), das
+     * auf dem iPad den Hauptfaden blockiert, entsprechend kürzer. */
+    var MIN_ABSTAND2 = 1.2 * 1.2;   // in logischen Einheiten, quadriert
+    function punktAnhaengen(s, e) {
+      var p = posFromEvent(e);
+      p.x = Math.round(p.x * 10) / 10;
+      p.y = Math.round(p.y * 10) / 10;
+      var last = s.points[s.points.length - 1];
+      if (last) {
+        var dx = p.x - last.x, dy = p.y - last.y;
+        if (dx * dx + dy * dy < MIN_ABSTAND2) return;
+      }
+      s.points.push(p);
+    }
+
+    function onUp(e) {
+      if (schubId !== null && e.pointerId === schubId) {
+        schubId = null;
+        if (aktivId === null) fensterAus();
+        return;
+      }
+      if (aktivId === null || e.pointerId !== aktivId) return;
+      if (e.pointerType === "pen") letzterStift = now();
+      aktivId = null;
       drawing = false;
       current = null;
+      if (schubId === null) fensterAus();
+      diagZaehl("up");
+      changed();
     }
-    canvas.addEventListener("pointerup", endStroke);
-    canvas.addEventListener("pointercancel", endStroke);
-    // Früher endete der Strich auch bei "pointerleave". Weil der Zeiger beim
-    // Aufsetzen eingefangen wird (setPointerCapture), kommen die Ereignisse
-    // aber weiter an, selbst wenn der Stift kurz über den Rand der Fläche
-    // hinausfährt – etwa bei einem hohen Buchstaben am oberen Rand. Der
-    // abgebrochene Strich sah dann aus, als hätte das Blatt Zeichen
-    // verschluckt. Jetzt endet ein Strich nur noch beim Absetzen oder wenn
-    // das System den Zeiger wirklich entzieht.
-    canvas.addEventListener("lostpointercapture", function (e) { if (drawing) endStroke(e); });
+
+    canvas.addEventListener("pointerdown", onDown, { passive: false });
+    // "lostpointercapture" beendet den Strich ausdrücklich NICHT mehr –
+    // siehe die Erklärung oben.
 
     requestAnimationFrame(resize);
 
     var onChange = null;
     function changed() { if (onChange) { try { onChange(); } catch (e) {} } }
-    canvas.addEventListener("pointerup", changed);
-    canvas.addEventListener("pointercancel", changed);
 
     // Setzt zusätzlich die Strichstärke des Stifts zurück, wenn der Radierer
     // über setColor/setWidth abgewählt wird (siehe unten).
@@ -1325,10 +1501,28 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     return b;
   }
 
+  /* Das Karo lag bisher als CSS-Verlauf auf der Zeichenfläche selbst. Jedes
+   * neue Strichstück zwang Safari damit, den Verlauf unter der Fläche neu zu
+   * malen – auf dem iPad der teuerste Teil des Schreibens. Jetzt liegt das
+   * Karo in einer eigenen, unveränderlichen Schicht darunter; die Fläche
+   * darüber ist durchsichtig und bekommt eine eigene Ebene im Compositor. */
+  function karoSchicht(canvas) {
+    if (!canvas || !canvas.parentNode) return;
+    if (canvas.parentNode.classList.contains("drawpad-paper")) return;
+    var paper = document.createElement("div");
+    paper.className = "drawpad-paper";
+    var karo = document.createElement("div");
+    karo.className = "drawpad-karo";
+    canvas.parentNode.insertBefore(paper, canvas);
+    paper.appendChild(karo);
+    paper.appendChild(canvas);
+  }
+
   function wireDrawpad(wrapEl) {
     var canvas = wrapEl.querySelector("canvas.drawpad-canvas");
     var toolbar = wrapEl.querySelector(".drawpad-toolbar");
     if (!canvas || !toolbar) return null;
+    karoSchicht(canvas);
     var pad = createDrawPad(canvas);
     var colors = [
       { name: "Tinte", v: getCssVar("--ink") },
@@ -2206,10 +2400,20 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     } catch (e) {}
   }
 
+  /* Zwischenspeichern kostet auf dem iPad spürbar Zeit: Alle Striche werden zu
+   * JSON, und localStorage schreibt im selben Faden auf den Datenträger. Fiel
+   * das mitten ins Schreiben, stockte der Stift. Deshalb wartet das Speichern
+   * jetzt deutlich länger ab und legt sich zusätzlich in eine Leerlaufpause. */
   function scheduleSave() {
     if (!autosaveKey) return;
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(saveNow, 400);
+    autosaveTimer = setTimeout(function () {
+      if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(saveNow, { timeout: 2000 });
+      } else {
+        saveNow();
+      }
+    }, 1200);
   }
 
   function clearSaved() {
@@ -2660,10 +2864,43 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     for (var i = 0; i < PDF_CDN.length; i++) await loadScript(PDF_CDN[i]);
   }
 
+  /* Scharfes ß in Überschriften, die per CSS in Großbuchstaben gesetzt werden.
+   *
+   * Aus „Und außerdem" (12 Zeichen) macht der Browser beim Anzeigen
+   * „UND AUSSERDEM" (13 Zeichen). Die Bibliothek, die fürs PDF ein Abbild der
+   * Seite zeichnet, misst die angezeigte Länge, greift damit aber auf den
+   * ursprünglichen Text zu – und bricht mit einer Bereichs-Fehlermeldung ab.
+   * Der ganze PDF-Export schlug dann fehl, nur weil irgendwo ein ß stand.
+   *
+   * Deshalb wird vor dem Zeichnen in genau diesen Überschriften das ß durch
+   * „SS" ersetzt und hinterher wieder zurückgeschrieben. Sichtbar ändert sich
+   * nichts: In Großbuchstaben steht dort ohnehin SS.
+   */
+  function grossbuchstabenEntschaerfen(root) {
+    var merker = [];
+    if (!root) return function () {};
+    var alle = root.querySelectorAll("*");
+    for (var i = 0; i < alle.length; i++) {
+      var e = alle[i];
+      if (e.children.length) continue;                 // nur Blätter mit reinem Text
+      var txt = e.textContent;
+      if (!txt || txt.indexOf("ß") < 0) continue;
+      var tf = "";
+      try { tf = getComputedStyle(e).textTransform; } catch (err) { continue; }
+      if (tf !== "uppercase") continue;
+      merker.push({ el: e, text: txt });
+      e.textContent = txt.replace(/ß/g, "SS");
+    }
+    return function () {
+      for (var j = 0; j < merker.length; j++) merker[j].el.textContent = merker[j].text;
+    };
+  }
+
   async function buildPdfBlob(rootId) {
     await ensurePdfLibs();
     if (!global.jspdf || !global.html2canvas) throw new Error("PDF-LIBS");
     document.body.classList.add("exporting");
+    var zurueck = grossbuchstabenEntschaerfen(el(rootId));
     await new Promise(function (r) { setTimeout(r, 60); });
     try {
       var jsPDF = global.jspdf.jsPDF;
@@ -2710,6 +2947,7 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
 
       return pdf.output("blob");
     } finally {
+      zurueck();
       document.body.classList.remove("exporting");
     }
   }
@@ -2748,7 +2986,7 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     renderTemplateSolution: renderTemplateSolution,
     seededShuffle: seededShuffle, wireSortList: wireSortList, checkSortTask: checkSortTask,
     moveSortItem: moveSortItem, wireAutosave: wireAutosave,
-    schalteFrei: schalteFrei,
+    schalteFrei: schalteFrei, diagStart: diagStart,
     offerDownload: offerDownload, exportPdf: exportPdf, buildPdfBlob: buildPdfBlob,
     ensurePdfLibs: ensurePdfLibs,
     computePagination: computePagination, computePageBreakOffsets: computePageBreakOffsets,
@@ -3726,7 +3964,7 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
           }
           out += flaeche;
         }
-        if (c.solution) {
+        if (c.solution && !(ctx && ctx.nurLehrerLoesung)) {
           out += '<div class="answer-row no-print"><button class="btn btn-ghost btn-sm" data-wb-reveal="' + uid + '" type="button">Musterlösung anzeigen</button></div>';
           out += '<div class="solution-area" id="wb-' + uid + '-sol">' + autoParagraph(c.solution) + "</div>";
         }
@@ -3893,7 +4131,13 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
             return '<div class="sort-item solved"><span class="sort-rank">' + (i + 1) + ".</span>" +
               '<span class="sort-text">' + esc(it.text) + "</span></div>";
           }).join("");
-          return head + '<div class="sort-list">' + solHtml + "</div>";
+          var out = head + '<div class="sort-list">' + solHtml + "</div>";
+          // Die richtige Reihenfolge steht oben; der Kommentar erklärt, WARUM
+          // sie so ist – das braucht die Lehrkraft beim Besprechen.
+          if (c.solution) {
+            out += '<div class="solution-area open"><strong>Musterlösung:</strong>' + autoParagraph(c.solution) + "</div>";
+          }
+          return out;
         }
 
         var shuffled = E.seededShuffle(items, uid);
@@ -3949,6 +4193,9 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
           }
         }));
         d.appendChild(itemsWrap);
+
+        d.appendChild(field("Musterlösung (optional; erscheint auf dem Lösungsblatt unter der richtigen Reihenfolge)",
+          withSymbols(textArea(c.solution, function (v) { api.update({ solution: v }); }, 3))));
         return d;
       }
     }
@@ -3962,7 +4209,9 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
       '<section class="header-card wb-block' + (solution ? " is-solution" : "") + '" data-keep-with-next="false">' +
       '<div class="chapter-eyebrow-row"><span class="chapter-eyebrow">' + esc(meta.chapterCode || "") + " &nbsp;" + esc(meta.chapterTitle || "") + "</span>" +
       '<span class="chapter-meta">' + esc(meta.klasse || "") + (meta.klasse && meta.datum ? " · " : "") + esc(meta.datum || "") + "</span></div>" +
-      (solution ? '<div class="solution-badge">🔑 Lösungsblatt – nur für die Lehrkraft</div>' : "") +
+      // Bewusst ohne Zusatzvermerk: Das Lösungsblatt wird auch ausgegeben.
+      // Dass es die Lösungen sind, steht schon in der Überschrift.
+      (solution ? '<div class="solution-badge">🔑 Lösungen</div>' : "") +
       "<h1>" + esc(meta.title || "") + (solution ? " – Lösungen" : "") + "</h1>" +
       (meta.subtitle ? '<p class="subtitle">' + esc(meta.subtitle) + "</p>" : "") +
       "</section>"
@@ -4141,7 +4390,14 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
       var rowForceBreak = row.length === 1 && !!row[0].def.forceBreak;
       var cellsHtml = row.map(function (item) {
         var b = item.b, def = item.def;
-        var ctx = { solution: solution, preview: !!project.previewMode };
+        var ctx = {
+          solution: solution,
+          preview: !!project.previewMode,
+          // Musterlösungen können im Schülerblatt unterdrückt werden. Ohne das
+          // säße unter jeder Aufgabe ein Knopf „Musterlösung anzeigen" – bequem
+          // zum Abschreiben, bevor überhaupt gerechnet wurde.
+          nurLehrerLoesung: !!meta_(project).solutionsTeacherOnly
+        };
         if ((b.type === "task" || b.type === "sortTask") && !b.config.knobel) { taskNumber++; ctx.taskNumber = taskNumber; }
         var inner = def.render(b.config, b.id, ctx);
         var cls = "wb-block" + (def.noCard ? "" : " card");
@@ -4250,6 +4506,9 @@ body.exporting .wb-block.is-locked { border-style: solid; background: var(--pape
     // scrollt). Ohne Häkchen entscheidet das Blatt selbst, sobald zum ersten
     // Mal ein Stift benutzt wurde.
     E.setStiftModus(meta_(project).penOnly ? "stift" : "auto");
+
+    // Messhilfe für die Schreibleistung: Blatt mit ?diag=1 öffnen.
+    if (/[?&]diag=1/.test(location.search)) E.diagStart();
 
     // Zuletzt: Eingaben wiederherstellen und ab jetzt mitschreiben. Muss nach
     // dem Mounten aller Bausteine laufen, damit Felder und Zeichenflächen da sind.
