@@ -1452,6 +1452,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 (function (global) {
   "use strict";
 
+  /* Kennung dieses Bau-Standes. Wird beim Zusammenbauen eingesetzt und steht
+   * in jedem exportierten Blatt unten in der Fußzeile. Damit lässt sich in
+   * zwei Sekunden prüfen, ob auf einem Gerät wirklich die neue Fassung läuft
+   * – oder ob der Browser noch die alte Datei ausliefert. */
+  var BAUSTAND = "18.10.2026 (7b1fc8)";
+
   /* ---------- kleine Helfer ---------- */
   function el(id) { return document.getElementById(id); }
   function esc(s) {
@@ -3436,7 +3442,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
   }
 
+  // Auch von außen ablesbar: in der Entwicklerkonsole WB_BAUSTAND eingeben.
+  global.WB_BAUSTAND = BAUSTAND;
+  try { if (global.console && console.log) console.log("Baukasten-Fassung: " + BAUSTAND); } catch (e) {}
+
   global.WBEngine = {
+    BAUSTAND: BAUSTAND,
     el: el, esc: esc, getCssVar: getCssVar, debounce: debounce,
     parseNum: parseNum, numEq: numEq, formatEuro: formatEuro, formatDE: formatDE,
     showToast: showToast, redrawCallbacks: redrawCallbacks,
@@ -4907,7 +4918,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       (project.previewMode ? "" : '<button class="btn btn-primary btn-sm" id="wbExportPdfBtn" type="button">⭳ Als PDF sichern</button>') +
       "</div></div>" +
       '<main id="wbWorksheet">' + renderHeaderCard(meta_(project), solution) + blocksHtml + "</main>" +
-      '<footer class="appfoot no-print">' + (solution ? "Lösungsblatt" : "Interaktives Arbeitsblatt") + (meta_(project).chapterCode ? " · " + esc(meta_(project).chapterCode) : "") + "</footer>" +
+      '<footer class="appfoot no-print">' + (solution ? "Lösungsblatt" : "Interaktives Arbeitsblatt") + (meta_(project).chapterCode ? " · " + esc(meta_(project).chapterCode) : "") +
+      ' · <span class="appfoot-stand" title="Fassung der Blatt-Technik – zum Prüfen, ob wirklich die neue Datei geladen wurde">Fassung ' + esc(E.BAUSTAND || "?") + "</span></footer>" +
       '<button class="scratch-fab no-print" id="wbScratchFab" type="button" aria-label="Kritzelblock öffnen">✎</button>' +
       '<div class="scratch-panel no-print" id="wbScratchPanel">' +
       '<div class="scratch-head"><h3>Nebenrechnungen</h3><span class="scratch-spacer"></span>' +

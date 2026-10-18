@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schreibtest</title>
+<style>
+  :root {
+    --ink: #1b2430; --soft: #5c6675; --line: #d9dee6;
+    --paper: #ffffff; --paper2: #f4f6f9; --akzent: #2f6fdb; --warn: #c2410c; --ok: #2f7d4f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper2); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.2rem; margin: 0 0 4px; }
+  p.lead { margin: 0 0 14px; color: var(--soft); font-size: 0.92rem; line-height: 1.5; }
+  .karte { background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; margin-bottom: 14px; }
+  .flaeche { position: relative; border-radius: 10px; }
+  .karo { position: absolute; inset: 0; border: 1px solid var(--line); border-radius: 10px;
+    background-color: #fff;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 18px 18px; pointer-events: none; }
+  canvas { position: relative; display: block; width: 100%; height: 300px;
+    touch-action: none !important; background: transparent; border-radius: 10px; }
+  .leiste { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  button { font: inherit; font-size: 0.9rem; padding: 9px 14px; border-radius: 9px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  button.haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 600; }
+  .urteil { margin-top: 12px; font-size: 0.95rem; line-height: 1.5; }
+  .urteil b { display: block; margin-top: 8px; }
+  .gut { color: var(--ok); } .schlecht { color: var(--warn); }
+  pre { background: #10151d; color: #e7edf5; padding: 10px; border-radius: 9px;
+    font-size: 0.72rem; line-height: 1.45; overflow-x: auto; max-height: 46vh; margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--soft); font-weight: 600; }
+  td.zahl { text-align: right; font-variant-numeric: tabular-nums; }
+  .hinweis { font-size: 0.82rem; color: var(--soft); margin-top: 8px; }
+  body, body * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Schreibtest</h1>
+  <p class="lead">
+    Diese Seite zeichnet nichts schön – sie protokolliert nur, was der Browser beim Schreiben
+    tatsächlich meldet. <b>Schreibe mit dem Stift „1/2“</b> in die Fläche: erst die Eins,
+    dann den Querstrich, dann die Zwei. Danach unten auf <em>Bericht kopieren</em> tippen und
+    den Text verschicken.
+  </p>
+
+  <div class="karte">
+    <div class="flaeche"><div class="karo"></div><canvas id="pad"></canvas></div>
+    <div class="leiste">
+      <button type="button" class="haupt" id="kopieren">Bericht kopieren</button>
+      <button type="button" id="leeren">Fläche leeren</button>
+    </div>
+    <div class="urteil" id="urteil">Noch kein Strich aufgezeichnet.</div>
+  </div>
+
+  <div class="karte">
+    <table id="tabelle">
+      <thead><tr><th>Strich</th><th class="zahl">Dauer</th><th class="zahl">Bewegungen</th>
+        <th class="zahl">Messpunkte</th><th class="zahl">Länge</th><th>Abschluss</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="hinweis">
+      „Messpunkte“ zählt alles, was ankommt – auch die Zwischenpunkte, die der Browser
+      nachreicht. „Abschluss“ sagt, womit der Strich endete und wie viele Punkte dieses
+      letzte Ereignis noch mitgebracht hat.
+    </div>
+  </div>
+
+  <div class="karte"><pre id="log">(noch nichts)</pre></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var canvas = document.getElementById("pad");
+  var ctx = canvas.getContext("2d");
+  var urteilEl = document.getElementById("urteil");
+  var logEl = document.getElementById("log");
+  var tbody = document.querySelector("#tabelle tbody");
+
+  var zeilen = [];                 // Rohprotokoll
+  var striche = [];                // Auswertung pro Strich
+  var aktiv = null;
+  var t0 = 0;
+
+  function groesse() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#1b2430";
+  }
+  window.addEventListener("resize", function () { groesse(); zeichneAlles(); });
+  groesse();
+
+  function zeichneAlles() {
+    var r = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    striche.forEach(function (s) {
+      if (!s.punkte.length) return;
+      ctx.beginPath();
+      ctx.moveTo(s.punkte[0].x, s.punkte[0].y);
+      if (s.punkte.length === 1) ctx.lineTo(s.punkte[0].x + 0.1, s.punkte[0].y + 0.1);
+      for (var i = 1; i < s.punkte.length; i++) ctx.lineTo(s.punkte[i].x, s.punkte[i].y);
+      ctx.stroke();
+    });
+  }
+
+  function protokoll(e, anzahl) {
+    if (!t0) t0 = e.timeStamp;
+    zeilen.push(
+      String(Math.round(e.timeStamp - t0)).padStart(6) + " ms  " +
+      e.type.replace("pointer", "").padEnd(7) +
+      " id=" + e.pointerId +
+      " art=" + (e.pointerType || "?") +
+      " tasten=" + e.buttons +
+      " punkte=" + anzahl +
+      " x=" + Math.round(e.clientX) + " y=" + Math.round(e.clientY) +
+      (e.pressure !== undefined ? " druck=" + e.pressure.toFixed(2) : "")
+    );
+    if (zeilen.length > 400) zeilen.shift();
+    logEl.textContent = zeilen.join("\n");
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function messpunkte(e) {
+    if (typeof e.getCoalescedEvents === "function") {
+      try {
+        var l = e.getCoalescedEvents();
+        if (l && l.length) return l;
+      } catch (err) {}
+    }
+    return [e];
+  }
+
+  var rahmen = null;
+  function pos(e) {
+    return { x: e.clientX - rahmen.left, y: e.clientY - rahmen.top };
+  }
+
+  canvas.addEventListener("pointerdown", function (e) {
+    rahmen = canvas.getBoundingClientRect();
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    aktiv = { id: e.pointerId, art: e.pointerType, start: e.timeStamp,
+              bewegungen: 0, punkte: [pos(e)], abschluss: "–", abschlussPunkte: 0 };
+    striche.push(aktiv);
+    protokoll(e, 1);
+    zeichneAlles();
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener("pointermove", function (e) {
+    if (!aktiv || e.pointerId !== aktiv.id) return;
+    var p = messpunkte(e);
+    protokoll(e, p.length);
+    if (e.buttons === 0) { beenden(e, "schwebt"); return; }
+    aktiv.bewegungen++;
+    for (var i = 0; i < p.length; i++) aktiv.punkte.push(pos(p[i]));
+    zeichneAlles();
+    e.preventDefault();
+  }, { passive: false });
+
+  function beenden(e, wie) {
+    if (!aktiv) return;
+    var p = messpunkte(e);
+    protokoll(e, p.length);
+    if (wie !== "abgebrochen" && wie !== "schwebt") {
+      for (var i = 0; i < p.length; i++) aktiv.punkte.push(pos(p[i]));
+      aktiv.abschlussPunkte = p.length;
+    }
+    aktiv.abschluss = wie;
+    aktiv.dauer = Math.round(e.timeStamp - aktiv.start);
+    aktiv = null;
+    zeichneAlles();
+    auswerten();
+  }
+  window.addEventListener("pointerup", function (e) {
+    if (aktiv && e.pointerId === aktiv.id) beenden(e, "abgesetzt");
+  }, true);
+  window.addEventListener("pointercancel", function (e) {
+    if (aktiv && e.pointerId === aktiv.id) beenden(e, "abgebrochen");
+  }, true);
+
+  function laenge(s) {
+    var l = 0;
+    for (var i = 1; i < s.punkte.length; i++) {
+      var dx = s.punkte[i].x - s.punkte[i - 1].x, dy = s.punkte[i].y - s.punkte[i - 1].y;
+      l += Math.sqrt(dx * dx + dy * dy);
+    }
+    return Math.round(l);
+  }
+
+  function auswerten() {
+    tbody.innerHTML = "";
+    striche.forEach(function (s, i) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + (i + 1) + " <span style='color:#5c6675'>(" + s.art + ")</span></td>" +
+        "<td class='zahl'>" + (s.dauer === undefined ? "–" : s.dauer + " ms") + "</td>" +
+        "<td class='zahl'>" + s.bewegungen + "</td>" +
+        "<td class='zahl'>" + s.punkte.length + "</td>" +
+        "<td class='zahl'>" + laenge(s) + " px</td>" +
+        "<td>" + s.abschluss + (s.abschlussPunkte ? " (+" + s.abschlussPunkte + ")" : "") + "</td>";
+      tbody.appendChild(tr);
+    });
+
+    var kurz = striche.filter(function (s) { return s.bewegungen === 0; });
+    var abgebrochen = striche.filter(function (s) { return s.abschluss === "abgebrochen"; });
+    var schweber = striche.filter(function (s) { return s.abschluss === "schwebt"; });
+    var txt = "<b>" + striche.length + " Strich(e) aufgezeichnet.</b>";
+    if (kurz.length) {
+      txt += "<b class='schlecht'>" + kurz.length + " Strich(e) ohne eine einzige Bewegungsmeldung.</b>" +
+        "Der Browser hat den Verlauf erst beim Absetzen nachgereicht" +
+        (kurz.some(function (s) { return s.abschlussPunkte > 1; })
+          ? " – dort steckten " + Math.max.apply(null, kurz.map(function (s) { return s.abschlussPunkte; })) +
+            " Messpunkte drin. Genau dafür ist die Korrektur gedacht."
+          : " – und dabei nur einen einzigen Punkt mitgeschickt. Dann lässt sich der Strich nicht rekonstruieren.");
+    }
+    if (abgebrochen.length) {
+      txt += "<b class='schlecht'>" + abgebrochen.length + " Strich(e) wurden vom System abgebrochen.</b>" +
+        "Das deutet auf eine Geste, die der Browser an sich gezogen hat.";
+    }
+    if (schweber.length) {
+      txt += "<b>" + schweber.length + " Strich(e) endeten ohne Absetz-Meldung.</b>";
+    }
+    if (!kurz.length && !abgebrochen.length && !schweber.length) {
+      txt += "<b class='gut'>Alle Striche kamen vollständig an.</b>";
+    }
+    urteilEl.innerHTML = txt;
+  }
+
+  document.getElementById("leeren").addEventListener("click", function () {
+    striche = []; zeilen = []; t0 = 0;
+    logEl.textContent = "(noch nichts)";
+    urteilEl.textContent = "Noch kein Strich aufgezeichnet.";
+    tbody.innerHTML = "";
+    zeichneAlles();
+  });
+
+  document.getElementById("kopieren").addEventListener("click", function () {
+    var kopf = [
+      "Schreibtest",
+      "Browser: " + navigator.userAgent,
+      "Bildschirm: " + window.innerWidth + "x" + window.innerHeight +
+        " @" + (window.devicePixelRatio || 1) + "x",
+      "Zwischenpunkte verfügbar: " + (typeof PointerEvent !== "undefined" &&
+        PointerEvent.prototype.getCoalescedEvents ? "ja" : "NEIN"),
+      "",
+      "Striche:",
+    ];
+    striche.forEach(function (s, i) {
+      kopf.push("  " + (i + 1) + ". " + s.art + ", " + (s.dauer === undefined ? "?" : s.dauer + " ms") +
+        ", " + s.bewegungen + " Bewegungen, " + s.punkte.length + " Punkte, " +
+        laenge(s) + " px, Abschluss: " + s.abschluss +
+        (s.abschlussPunkte ? " (+" + s.abschlussPunkte + " Punkte)" : ""));
+    });
+    kopf.push("", "Protokoll:", zeilen.join("\n"));
+    var text = kopf.join("\n");
+    var fertig = function () {
+      var b = document.getElementById("kopieren");
+      var alt = b.textContent; b.textContent = "Kopiert ✓";
+      setTimeout(function () { b.textContent = alt; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(fertig, function () { ersatz(text, fertig); });
+    } else {
+      ersatz(text, fertig);
+    }
+  });
+
+  function ersatz(text, fertig) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0";
+    ta.style.width = "100%"; ta.style.height = "40vh";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand("copy"); fertig(); } catch (e) {}
+    setTimeout(function () { ta.remove(); }, 200);
+  }
+})();
+</script>
+</body>
+</html>
