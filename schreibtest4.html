@@ -46,7 +46,7 @@
     Diese Seite horcht auf <b>zwei Ebenen gleichzeitig</b>: auf die rohen Berührungen
     (<i>touchstart</i>) und auf die daraus abgeleiteten Zeiger-Ereignisse
     (<i>pointerdown</i>). Normalerweise gehört zu jeder Berührung genau ein Zeiger.<br>
-    <b>Schreibe fünf Mal „1/2“</b> – das sind 15 Striche. Wenn danach weniger als 15
+    <b>Schreibe drei Mal „1/2“</b> – das sind 9 Striche. Jeder Strich bekommt eine eigene Farbe und seine Nummer; mach anschließend ein Bildschirmfoto, dann lässt sich Strich für Strich mit der Tabelle vergleichen. Wenn danach weniger als 15
     Berührungen gezählt sind, hat das iPad den Kontakt schon vor der Seite abgefangen.
     Sind es 15 Berührungen, aber weniger Zeiger, verschluckt Safari sie.
   </p>
@@ -138,17 +138,32 @@
     if (!rahmen) rahmen = canvas.getBoundingClientRect();
     return { x: e.clientX - rahmen.left, y: e.clientY - rahmen.top };
   }
-  function strich(s) {
+  /* Jeder Strich bekommt eine eigene Farbe und seine Nummer an den Anfang
+   * geschrieben. Damit lässt sich auf einem Bildschirmfoto Strich für Strich
+   * mit der Tabelle vergleichen: Was aufgezeichnet wurde, steht in der
+   * Tabelle – was zu sehen ist, steht auf der Fläche. */
+  var FARBEN = ["#1b2430", "#c2410c", "#2f6fdb", "#2f7d4f", "#8b5cf6",
+                "#b91c1c", "#0e7490", "#a16207"];
+  function strich(s, nr) {
     if (!s.p.length) return;
+    ctx.strokeStyle = FARBEN[(nr || 0) % FARBEN.length];
     ctx.beginPath(); ctx.moveTo(s.p[0].x, s.p[0].y);
     if (s.p.length === 1) ctx.lineTo(s.p[0].x + 0.1, s.p[0].y + 0.1);
     for (var i = 1; i < s.p.length; i++) ctx.lineTo(s.p[i].x, s.p[i].y);
     ctx.stroke();
+    if (nr !== undefined) {
+      ctx.save();
+      ctx.fillStyle = FARBEN[nr % FARBEN.length];
+      ctx.font = "600 11px -apple-system, system-ui, sans-serif";
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(String(nr + 1), s.p[0].x + 4, s.p[0].y - 4);
+      ctx.restore();
+    }
   }
   function alles() {
     var r = canvas.getBoundingClientRect();
     ctx.clearRect(0, 0, r.width, r.height);
-    striche.forEach(strich);
+    striche.forEach(function (s, i) { strich(s, i); });
   }
   function messpunkte(e) {
     if (typeof e.getCoalescedEvents === "function") {
