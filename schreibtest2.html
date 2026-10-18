@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schreibtest 2 – Vergleich</title>
+<style>
+  :root { --ink:#1b2430; --soft:#5c6675; --line:#d9dee6; --paper2:#f4f6f9;
+          --akzent:#2f6fdb; --warn:#c2410c; --ok:#2f7d4f; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--paper2); color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:14px; }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  p.lead { margin:0 0 12px; color:var(--soft); font-size:0.9rem; line-height:1.5; }
+  .reihe { display:flex; gap:12px; flex-wrap:wrap; }
+  .karte { flex:1 1 320px; background:#fff; border:1px solid var(--line);
+    border-radius:12px; padding:10px; }
+  .karte h2 { font-size:0.95rem; margin:0 0 2px; }
+  .karte .unter { font-size:0.78rem; color:var(--soft); margin:0 0 8px; line-height:1.4; }
+  .flaeche { position:relative; border-radius:10px; }
+  .karo { position:absolute; inset:0; border:1px solid var(--line); border-radius:10px;
+    background-color:#fff;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px),
+                     linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:18px 18px; pointer-events:none; }
+  canvas { position:relative; display:block; width:100%; height:260px;
+    touch-action:none !important; background:transparent; border-radius:10px; }
+  .zahlen { font-size:0.8rem; color:var(--soft); margin-top:8px; line-height:1.5; }
+  .zahlen b { color:var(--ink); }
+  .leiste { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+  button { font:inherit; font-size:0.9rem; padding:9px 14px; border-radius:9px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); }
+  button.haupt { background:var(--akzent); border-color:var(--akzent); color:#fff; font-weight:600; }
+  .urteil { background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:12px; font-size:0.92rem; line-height:1.55; }
+  .gut { color:var(--ok); font-weight:600; } .schlecht { color:var(--warn); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:6px; }
+  th,td { text-align:left; padding:3px 5px; border-bottom:1px solid var(--line); }
+  th { color:var(--soft); }
+  td.z { text-align:right; font-variant-numeric:tabular-nums; }
+  body, body * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Schreibtest 2 – zwei Verfahren im Vergleich</h1>
+  <p class="lead">
+    Beide Flächen bekommen dieselben Ereignisse, verarbeiten sie aber unterschiedlich.
+    <b>Links</b> roh: jeder Messpunkt wird genommen, jedes Mal alles neu gezeichnet.
+    <b>Rechts</b> genau so, wie es das Arbeitsblatt macht: Punkte gerundet und ausgedünnt,
+    in einem festen Blattmaß gespeichert, nur das neue Stück nachgezeichnet.<br>
+    <b>Schreibe auf beide Flächen denselben Bruch „1/2“</b> – besonders wichtig ist der
+    kurze, schnelle Querstrich. Dann unten auf <em>Bericht kopieren</em>.
+  </p>
+
+  <div class="reihe">
+    <div class="karte">
+      <h2>A · roh</h2>
+      <p class="unter">Alle Punkte, volle Genauigkeit, vollständiger Neuaufbau.</p>
+      <div class="flaeche"><div class="karo"></div><canvas id="a"></canvas></div>
+      <div class="zahlen" id="zahlenA">–</div>
+    </div>
+    <div class="karte">
+      <h2>B · Verfahren des Arbeitsblatts</h2>
+      <p class="unter">Gerundet, ausgedünnt, Blattmaß 1000, nur neues Stück gezeichnet.</p>
+      <div class="flaeche"><div class="karo"></div><canvas id="b"></canvas></div>
+      <div class="zahlen" id="zahlenB">–</div>
+    </div>
+  </div>
+
+  <div class="leiste">
+    <button type="button" class="haupt" id="kopieren">Bericht kopieren</button>
+    <button type="button" id="leeren">Beide leeren</button>
+  </div>
+
+  <div class="urteil" id="urteil">Noch kein Strich aufgezeichnet.</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var LOGISCH = 1000;
+  var MIN_ABSTAND2 = 1.2 * 1.2;
+
+  function messpunkte(e) {
+    if (typeof e.getCoalescedEvents === "function") {
+      try { var l = e.getCoalescedEvents(); if (l && l.length) return l; } catch (err) {}
+    }
+    return [e];
+  }
+
+  function pad(canvas, modus, zahlenEl) {
+    var ctx = canvas.getContext("2d");
+    var striche = [], aktiv = null, rahmen = null, mass = 1, aktivId = null;
+    var letzteZeit = -1, doppelt = 0;
+
+    function groesse() {
+      var r = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      if (modus === "blatt") {
+        var s = dpr * (r.width / LOGISCH);
+        ctx.setTransform(s, 0, 0, s, 0, 0);
+        ctx.lineWidth = 5;
+      } else {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.lineWidth = 2.5;
+      }
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#1b2430";
+      alles();
+    }
+    window.addEventListener("resize", groesse);
+
+    function messen() {
+      rahmen = canvas.getBoundingClientRect();
+      mass = modus === "blatt" ? rahmen.width / LOGISCH : 1;
+    }
+    function pos(e) {
+      if (!rahmen) messen();
+      return { x: (e.clientX - rahmen.left) / mass, y: (e.clientY - rahmen.top) / mass };
+    }
+    function anhaengen(s, e) {
+      var p = pos(e);
+      if (modus === "blatt") {
+        p.x = Math.round(p.x * 10) / 10; p.y = Math.round(p.y * 10) / 10;
+        var l = s.punkte[s.punkte.length - 1];
+        if (l) {
+          var dx = p.x - l.x, dy = p.y - l.y;
+          if (dx * dx + dy * dy < MIN_ABSTAND2) { s.verworfen++; return; }
+        }
+      }
+      s.punkte.push(p);
+    }
+    function strich(s) {
+      if (!s.punkte.length) return;
+      ctx.beginPath();
+      ctx.moveTo(s.punkte[0].x, s.punkte[0].y);
+      if (s.punkte.length === 1) ctx.lineTo(s.punkte[0].x + 0.1, s.punkte[0].y + 0.1);
+      for (var i = 1; i < s.punkte.length; i++) ctx.lineTo(s.punkte[i].x, s.punkte[i].y);
+      ctx.stroke();
+    }
+    function stueck(s, ab) {
+      if (s.punkte.length < 2) { strich(s); return; }
+      ctx.beginPath();
+      ctx.moveTo(s.punkte[ab - 1].x, s.punkte[ab - 1].y);
+      for (var i = ab; i < s.punkte.length; i++) ctx.lineTo(s.punkte[i].x, s.punkte[i].y);
+      ctx.stroke();
+    }
+    function alles() {
+      var r = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, r.width / mass, r.height / mass);
+      striche.forEach(strich);
+    }
+
+    function uebernehmen(e) {
+      var ab = aktiv.punkte.length;
+      var p = messpunkte(e);
+      aktiv.gemeldet += p.length;
+      for (var i = 0; i < p.length; i++) anhaengen(aktiv, p[i]);
+      if (aktiv.punkte.length > ab) {
+        if (modus === "blatt") stueck(aktiv, ab); else alles();
+      }
+      return p.length;
+    }
+
+    canvas.addEventListener("pointerdown", function (e) {
+      if (aktivId !== null) return;
+      messen();
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      aktivId = e.pointerId;
+      aktiv = { punkte: [], bewegungen: 0, gemeldet: 1, verworfen: 0,
+                start: e.timeStamp, abschluss: "–" };
+      anhaengen(aktiv, e);
+      striche.push(aktiv);
+      strich(aktiv);
+      letzteZeit = -1;
+      e.preventDefault();
+    }, { passive: false });
+
+    window.addEventListener("pointermove", function (e) {
+      if (aktivId === null || e.pointerId !== aktivId) return;
+      if (e.timeStamp === letzteZeit) { doppelt++; return; }
+      letzteZeit = e.timeStamp;
+      if (e.buttons === 0) { ende(e, "schwebt", true); return; }
+      aktiv.bewegungen++;
+      uebernehmen(e);
+      e.preventDefault();
+    }, { passive: false });
+
+    function ende(e, wie, ohnePunkt) {
+      if (aktivId === null) return;
+      if (!ohnePunkt) uebernehmen(e);
+      aktiv.abschluss = wie;
+      aktiv.dauer = Math.round(e.timeStamp - aktiv.start);
+      aktiv.laenge = laenge(aktiv);
+      aktivId = null; aktiv = null;
+      zeige(); urteilen();
+    }
+    window.addEventListener("pointerup", function (e) {
+      if (aktivId !== null && e.pointerId === aktivId) ende(e, "abgesetzt");
+    }, true);
+    window.addEventListener("pointercancel", function (e) {
+      if (aktivId !== null && e.pointerId === aktivId) ende(e, "abgebrochen");
+    }, true);
+
+    function laenge(s) {
+      var l = 0;
+      for (var i = 1; i < s.punkte.length; i++) {
+        var dx = s.punkte[i].x - s.punkte[i - 1].x, dy = s.punkte[i].y - s.punkte[i - 1].y;
+        l += Math.sqrt(dx * dx + dy * dy);
+      }
+      return Math.round(modus === "blatt" ? l * mass : l);
+    }
+
+    function zeige() {
+      var h = "<table><tr><th>#</th><th class='z'>ms</th><th class='z'>Bew.</th>" +
+        "<th class='z'>gemeldet</th><th class='z'>behalten</th><th class='z'>px</th>" +
+        "<th>Ende</th></tr>";
+      striche.forEach(function (s, i) {
+        h += "<tr><td>" + (i + 1) + "</td><td class='z'>" + (s.dauer || 0) + "</td>" +
+          "<td class='z'>" + s.bewegungen + "</td><td class='z'>" + s.gemeldet + "</td>" +
+          "<td class='z'>" + s.punkte.length + "</td><td class='z'>" + (s.laenge || 0) + "</td>" +
+          "<td>" + s.abschluss + "</td></tr>";
+      });
+      h += "</table>";
+      if (doppelt) h += "<div style='margin-top:6px'>Doppelt gemeldete Bewegungen: <b>" + doppelt + "</b></div>";
+      zahlenEl.innerHTML = h;
+    }
+
+    groesse();
+    return {
+      striche: function () { return striche; },
+      doppelt: function () { return doppelt; },
+      leeren: function () { striche = []; doppelt = 0; alles(); zeige(); }
+    };
+  }
+
+  var A = pad(document.getElementById("a"), "roh", document.getElementById("zahlenA"));
+  var B = pad(document.getElementById("b"), "blatt", document.getElementById("zahlenB"));
+  var urteilEl = document.getElementById("urteil");
+
+  function kurzeStriche(p) {
+    return p.striche().filter(function (s) { return (s.laenge || 0) < 80; });
+  }
+
+  function urteilen() {
+    var a = A.striche(), b = B.striche();
+    var txt = "<b>Links " + a.length + " Strich(e), rechts " + b.length + ".</b><br>";
+    var verloren = b.filter(function (s) { return s.punkte.length <= 1 && s.gemeldet > 1; });
+    if (verloren.length) {
+      txt += "<span class='schlecht'>" + verloren.length +
+        " Strich(e) rechts hatten gemeldete Messpunkte, behalten wurde aber nur einer.</span> " +
+        "Dann liegt es am Verfahren des Arbeitsblatts, nicht am Browser.<br>";
+    }
+    var leer = a.concat(b).filter(function (s) { return s.gemeldet <= 1; });
+    if (leer.length) {
+      txt += "<span class='schlecht'>" + leer.length +
+        " Strich(e) bekamen überhaupt nur einen Messpunkt.</span> " +
+        "Dann meldet der Browser den Verlauf nicht – das Verfahren kann nichts dafür.<br>";
+    }
+    var kurzA = kurzeStriche(A).length, kurzB = kurzeStriche(B).length;
+    txt += "Kurze Striche (unter 80 px): links " + kurzA + ", rechts " + kurzB + ".<br>";
+    if (A.doppelt() || B.doppelt()) {
+      txt += "Doppelt gemeldete Bewegungen: links " + A.doppelt() + ", rechts " + B.doppelt() +
+        " – das macht dieser Browser so, es wird hier herausgefiltert.<br>";
+    }
+    if (!verloren.length && !leer.length) {
+      txt += "<span class='gut'>Bisher kam jeder Strich auf beiden Seiten vollständig an.</span> " +
+        "Falls du gerade einen Strich gesehen hast, der nicht erschienen ist – noch einmal versuchen, " +
+        "damit er im Bericht landet.";
+    }
+    urteilEl.innerHTML = txt;
+  }
+  window.urteilen = urteilen;
+
+  document.getElementById("leeren").addEventListener("click", function () {
+    A.leeren(); B.leeren(); urteilEl.textContent = "Noch kein Strich aufgezeichnet.";
+  });
+
+  document.getElementById("kopieren").addEventListener("click", function () {
+    function block(name, p) {
+      var z = [name + " (doppelte Meldungen: " + p.doppelt() + ")"];
+      p.striche().forEach(function (s, i) {
+        z.push("  " + (i + 1) + ". " + (s.dauer || 0) + " ms, " + s.bewegungen + " Bewegungen, " +
+          s.gemeldet + " gemeldet, " + s.punkte.length + " behalten" +
+          (s.verworfen ? " (" + s.verworfen + " ausgedünnt)" : "") +
+          ", " + (s.laenge || 0) + " px, " + s.abschluss);
+      });
+      return z.join("\n");
+    }
+    var text = ["Schreibtest 2",
+      "Browser: " + navigator.userAgent,
+      "Bildschirm: " + window.innerWidth + "x" + window.innerHeight +
+        " @" + (window.devicePixelRatio || 1) + "x",
+      "", block("A · roh", A), "", block("B · Verfahren des Arbeitsblatts", B)].join("\n");
+    var fertig = function () {
+      var btn = document.getElementById("kopieren");
+      var alt = btn.textContent; btn.textContent = "Kopiert ✓";
+      setTimeout(function () { btn.textContent = alt; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(fertig, function () { ersatz(text, fertig); });
+    } else { ersatz(text, fertig); }
+  });
+
+  function ersatz(text, fertig) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0";
+    ta.style.width = "100%"; ta.style.height = "40vh";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); fertig(); } catch (e) {}
+    setTimeout(function () { ta.remove(); }, 200);
+  }
+})();
+</script>
+</body>
+</html>
