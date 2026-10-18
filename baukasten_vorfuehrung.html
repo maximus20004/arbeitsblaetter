@@ -1804,7 +1804,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         e.preventDefault();
         return;
       }
-      if (aktivId !== null) { e.preventDefault(); return; }   // zweiter Zeiger
+      // Läuft noch ein Strich, wird er hier sauber beendet, statt den neuen zu
+      // verwerfen: Fehlt einmal ein pointerup, ginge sonst alles Folgende
+      // verloren.
+      if (aktivId !== null) strichBeenden(null);
       // Eine angefangene Textmarkierung würde beim nächsten Strich wieder
       // aufblitzen – deshalb hier wegräumen.
       loescheMarkierung();
@@ -1824,6 +1827,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       strokes.push(current);
       drawStroke(current);          // der aufgesetzte Punkt
       fensterAn();
+      wachhundStellen();
       diagZaehl("down");
       e.preventDefault();
     }
@@ -1841,13 +1845,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }
       if (aktivId === null || e.pointerId !== aktivId) return;
       if (e.pointerType === "pen") letzterStift = now();
+      // Schwebt der Stift über der Fläche, statt sie zu berühren, ist der
+      // Strich zu Ende – auch wenn kein pointerup kam.
+      // (Ohne den Punkt zu übernehmen: Der Stift schwebt dann schon woanders.)
+      if (e.buttons === 0) { strichBeenden(null); return; }
       var t0 = now();
+      var zahl = punkteUebernehmen(e);
+      wachhundStellen();
+      diagZaehl("move", zahl, now() - t0);
+      e.preventDefault();
+    }
+
+    /* Alle Messpunkte eines Ereignisses übernehmen und das neue Stück zeichnen.
+     * Gibt zurück, wie viele Punkte das Ereignis mitgebracht hat. */
+    function punkteUebernehmen(e) {
       var ab = current.points.length;
       var punkte = messpunkte(e);
       for (var i = 0; i < punkte.length; i++) punktAnhaengen(current, punkte[i]);
       if (current.points.length > ab) drawSegment(current, ab);
-      diagZaehl("move", punkte.length, now() - t0);
-      e.preventDefault();
+      return punkte.length;
     }
 
     /* Messpunkte werden gerundet und ausgedünnt gespeichert.
@@ -1867,6 +1883,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       s.points.push(p);
     }
 
+    /* Einen laufenden Strich abschließen.
+     *
+     * HIER steckte der Fehler, den man beim Bruchstrich von „1/2" sieht:
+     * Safari liefert die letzten Messpunkte eines Strichs nicht mehr als
+     * pointermove, sondern hängt sie an das pointerup-Ereignis. Diese Punkte
+     * wurden bisher weggeworfen – beim langen Strich der 1 fehlte dadurch nur
+     * das letzte Stück und fiel nicht auf, beim kurzen, schnellen Querstrich
+     * war es der ganze Strich: Übrig blieb der aufgesetzte Punkt.
+     * Deshalb wird der Abschluss jetzt genauso ausgewertet wie eine Bewegung.
+     */
+    function strichBeenden(e) {
+      if (aktivId === null) return;
+      if (e) {
+        if (e.pointerType === "pen") letzterStift = now();
+        if (e.type !== "pointercancel") punkteUebernehmen(e);
+      }
+      aktivId = null;
+      drawing = false;
+      current = null;
+      if (schubId === null) fensterAus();
+      clearTimeout(wachhund);
+      diagZaehl("up");
+      changed();
+    }
+
+    // Letzte Sicherung: Kommt für einen laufenden Strich längere Zeit gar
+    // nichts mehr an, wurde das Absetzen verschluckt. Dann beenden wir ihn
+    // selbst, damit der nächste Strich wieder anfangen kann.
+    var wachhund = null;
+    function wachhundStellen() {
+      clearTimeout(wachhund);
+      wachhund = setTimeout(function () { strichBeenden(null); }, 1500);
+    }
+
     function onUp(e) {
       if (schubId !== null && e.pointerId === schubId) {
         schubId = null;
@@ -1874,13 +1924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         return;
       }
       if (aktivId === null || e.pointerId !== aktivId) return;
-      if (e.pointerType === "pen") letzterStift = now();
-      aktivId = null;
-      drawing = false;
-      current = null;
-      if (schubId === null) fensterAus();
-      diagZaehl("up");
-      changed();
+      strichBeenden(e);
     }
 
     canvas.addEventListener("pointerdown", onDown, { passive: false });
@@ -3284,10 +3328,43 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     for (var i = 0; i < PDF_CDN.length; i++) await loadScript(PDF_CDN[i]);
   }
 
+  /* Scharfes ß in Überschriften, die per CSS in Großbuchstaben gesetzt werden.
+   *
+   * Aus „Und außerdem" (12 Zeichen) macht der Browser beim Anzeigen
+   * „UND AUSSERDEM" (13 Zeichen). Die Bibliothek, die fürs PDF ein Abbild der
+   * Seite zeichnet, misst die angezeigte Länge, greift damit aber auf den
+   * ursprünglichen Text zu – und bricht mit einer Bereichs-Fehlermeldung ab.
+   * Der ganze PDF-Export schlug dann fehl, nur weil irgendwo ein ß stand.
+   *
+   * Deshalb wird vor dem Zeichnen in genau diesen Überschriften das ß durch
+   * „SS" ersetzt und hinterher wieder zurückgeschrieben. Sichtbar ändert sich
+   * nichts: In Großbuchstaben steht dort ohnehin SS.
+   */
+  function grossbuchstabenEntschaerfen(root) {
+    var merker = [];
+    if (!root) return function () {};
+    var alle = root.querySelectorAll("*");
+    for (var i = 0; i < alle.length; i++) {
+      var e = alle[i];
+      if (e.children.length) continue;                 // nur Blätter mit reinem Text
+      var txt = e.textContent;
+      if (!txt || txt.indexOf("ß") < 0) continue;
+      var tf = "";
+      try { tf = getComputedStyle(e).textTransform; } catch (err) { continue; }
+      if (tf !== "uppercase") continue;
+      merker.push({ el: e, text: txt });
+      e.textContent = txt.replace(/ß/g, "SS");
+    }
+    return function () {
+      for (var j = 0; j < merker.length; j++) merker[j].el.textContent = merker[j].text;
+    };
+  }
+
   async function buildPdfBlob(rootId) {
     await ensurePdfLibs();
     if (!global.jspdf || !global.html2canvas) throw new Error("PDF-LIBS");
     document.body.classList.add("exporting");
+    var zurueck = grossbuchstabenEntschaerfen(el(rootId));
     await new Promise(function (r) { setTimeout(r, 60); });
     try {
       var jsPDF = global.jspdf.jsPDF;
@@ -3334,6 +3411,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
       return pdf.output("blob");
     } finally {
+      zurueck();
       document.body.classList.remove("exporting");
     }
   }
