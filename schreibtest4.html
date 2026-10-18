@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schreibtest 4 – kommt der Kontakt überhaupt an?</title>
+<style>
+  :root { --ink:#1b2430; --soft:#5c6675; --line:#d9dee6; --paper2:#f4f6f9;
+          --akzent:#2f6fdb; --warn:#c2410c; --ok:#2f7d4f; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; background:var(--paper2); color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:14px; }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  p.lead { margin:0 0 12px; color:var(--soft); font-size:0.9rem; line-height:1.5; }
+  .karte { background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:12px; margin-bottom:12px; }
+  .flaeche { position:relative; border-radius:10px; }
+  .karo { position:absolute; inset:0; border:1px solid var(--line); border-radius:10px;
+    background-color:#fff;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px),
+                     linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:18px 18px; pointer-events:none; }
+  canvas { position:relative; display:block; width:100%; height:300px;
+    touch-action:none !important; background:transparent; border-radius:10px; }
+  .kacheln { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .kachel { flex:1 1 150px; background:var(--paper2); border-radius:10px; padding:10px; }
+  .kachel .wert { font-size:1.9rem; font-weight:700; line-height:1.1;
+    font-variant-numeric:tabular-nums; }
+  .kachel .was { font-size:0.78rem; color:var(--soft); margin-top:2px; line-height:1.35; }
+  .leiste { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+  button { font:inherit; font-size:0.9rem; padding:9px 14px; border-radius:9px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); }
+  button.haupt { background:var(--akzent); border-color:var(--akzent); color:#fff; font-weight:600; }
+  .urteil { font-size:0.95rem; line-height:1.55; }
+  .gut { color:var(--ok); font-weight:600; } .schlecht { color:var(--warn); font-weight:600; }
+  pre { background:#10151d; color:#e7edf5; padding:10px; border-radius:9px;
+    font-size:0.72rem; line-height:1.45; overflow-x:auto; max-height:40vh; margin:0; }
+  body, body * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Schreibtest 4 – kommt der Kontakt überhaupt an?</h1>
+  <p class="lead">
+    Diese Seite horcht auf <b>zwei Ebenen gleichzeitig</b>: auf die rohen Berührungen
+    (<i>touchstart</i>) und auf die daraus abgeleiteten Zeiger-Ereignisse
+    (<i>pointerdown</i>). Normalerweise gehört zu jeder Berührung genau ein Zeiger.<br>
+    <b>Schreibe fünf Mal „1/2“</b> – das sind 15 Striche. Wenn danach weniger als 15
+    Berührungen gezählt sind, hat das iPad den Kontakt schon vor der Seite abgefangen.
+    Sind es 15 Berührungen, aber weniger Zeiger, verschluckt Safari sie.
+  </p>
+
+  <div class="karte">
+    <div class="flaeche"><div class="karo"></div><canvas id="pad"></canvas></div>
+    <div class="kacheln">
+      <div class="kachel"><div class="wert" id="kT">0</div>
+        <div class="was">Berührungen<br>(touchstart)</div></div>
+      <div class="kachel"><div class="wert" id="kP">0</div>
+        <div class="was">Zeiger<br>(pointerdown)</div></div>
+      <div class="kachel"><div class="wert" id="kS">0</div>
+        <div class="was">gezeichnete<br>Striche</div></div>
+      <div class="kachel"><div class="wert" id="kC">0</div>
+        <div class="was">abgebrochen<br>(cancel)</div></div>
+    </div>
+    <div class="leiste">
+      <button type="button" class="haupt" id="kopieren">Bericht kopieren</button>
+      <button type="button" id="leeren">Leeren</button>
+    </div>
+    <div class="urteil" id="urteil">Noch nichts aufgezeichnet.</div>
+  </div>
+
+  <div class="karte"><pre id="log">(noch nichts)</pre></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var canvas = document.getElementById("pad");
+  var ctx = canvas.getContext("2d");
+  var z = { touch: 0, touchEnde: 0, touchCancel: 0, pointer: 0, pointerUp: 0,
+            pointerCancel: 0, striche: 0 };
+  var zeilen = [], t0 = 0;
+  var striche = [], aktiv = null, aktivId = null, rahmen = null, letzteZeit = -1;
+
+  function log(txt, e) {
+    if (!t0 && e) t0 = e.timeStamp;
+    zeilen.push(String(Math.round((e ? e.timeStamp : 0) - t0)).padStart(6) + " ms  " + txt);
+    if (zeilen.length > 300) zeilen.shift();
+    var l = document.getElementById("log");
+    l.textContent = zeilen.join("\n");
+    l.scrollTop = l.scrollHeight;
+  }
+  function ziel(e) {
+    var t = e.target;
+    if (!t) return "?";
+    return t.id ? "#" + t.id : (t.className ? "." + String(t.className).split(" ")[0] : t.nodeName);
+  }
+
+  /* Rohe Berührungen – sie entstehen VOR den Zeiger-Ereignissen. */
+  document.addEventListener("touchstart", function (e) {
+    z.touch += e.changedTouches.length;
+    log("BERÜHRUNG start  " + e.changedTouches.length + "x auf " + ziel(e) +
+        "  (Typ " + (e.changedTouches[0] && e.changedTouches[0].touchType || "?") + ")", e);
+    zeige();
+  }, { capture: true, passive: true });
+  document.addEventListener("touchend", function (e) {
+    z.touchEnde += e.changedTouches.length; log("BERÜHRUNG ende", e); zeige();
+  }, { capture: true, passive: true });
+  document.addEventListener("touchcancel", function (e) {
+    z.touchCancel += e.changedTouches.length;
+    log("BERÜHRUNG ABGEBROCHEN auf " + ziel(e), e); zeige();
+  }, { capture: true, passive: true });
+
+  /* Zeiger-Ereignisse auf Dokumentebene – vor jeder Fläche. */
+  document.addEventListener("pointerdown", function (e) {
+    z.pointer++;
+    log("ZEIGER down  art=" + e.pointerType + " auf " + ziel(e), e); zeige();
+  }, true);
+  document.addEventListener("pointerup", function (e) { z.pointerUp++; zeige(); }, true);
+  document.addEventListener("pointercancel", function (e) {
+    z.pointerCancel++; log("ZEIGER ABGEBROCHEN auf " + ziel(e), e); zeige();
+  }, true);
+
+  function groesse() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#1b2430";
+    alles();
+  }
+  window.addEventListener("resize", groesse);
+
+  function pos(e) {
+    if (!rahmen) rahmen = canvas.getBoundingClientRect();
+    return { x: e.clientX - rahmen.left, y: e.clientY - rahmen.top };
+  }
+  function strich(s) {
+    if (!s.p.length) return;
+    ctx.beginPath(); ctx.moveTo(s.p[0].x, s.p[0].y);
+    if (s.p.length === 1) ctx.lineTo(s.p[0].x + 0.1, s.p[0].y + 0.1);
+    for (var i = 1; i < s.p.length; i++) ctx.lineTo(s.p[i].x, s.p[i].y);
+    ctx.stroke();
+  }
+  function alles() {
+    var r = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    striche.forEach(strich);
+  }
+  function messpunkte(e) {
+    if (typeof e.getCoalescedEvents === "function") {
+      try { var l = e.getCoalescedEvents(); if (l && l.length) return l; } catch (err) {}
+    }
+    return [e];
+  }
+
+  canvas.addEventListener("pointerdown", function (e) {
+    if (aktivId !== null) beenden(e, "verdrängt");
+    rahmen = canvas.getBoundingClientRect();
+    aktivId = e.pointerId; letzteZeit = -1;
+    aktiv = { p: [pos(e)], start: e.timeStamp, ende: "–" };
+    striche.push(aktiv); z.striche++;
+    strich(aktiv); zeige();
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener("pointermove", function (e) {
+    if (aktivId === null || e.pointerId !== aktivId) return;
+    if (e.timeStamp === letzteZeit) return;
+    letzteZeit = e.timeStamp;
+    if (e.buttons === 0) { beenden(e, "schwebt"); return; }
+    var p = messpunkte(e);
+    for (var i = 0; i < p.length; i++) aktiv.p.push(pos(p[i]));
+    alles(); e.preventDefault();
+  }, { passive: false });
+
+  function beenden(e, wie) {
+    if (aktivId === null) return;
+    if (wie === "abgesetzt" || wie === "abgebrochen") {
+      var p = messpunkte(e);
+      for (var i = 0; i < p.length; i++) aktiv.p.push(pos(p[i]));
+    }
+    aktiv.ende = wie;
+    aktiv.dauer = Math.round(e.timeStamp - aktiv.start);
+    aktiv.laenge = laenge(aktiv);
+    aktivId = null; aktiv = null;
+    alles(); zeige(); urteilen();
+  }
+  window.addEventListener("pointerup", function (e) {
+    if (aktivId !== null && e.pointerId === aktivId) beenden(e, "abgesetzt");
+  }, true);
+  window.addEventListener("pointercancel", function (e) {
+    if (aktivId !== null && e.pointerId === aktivId) beenden(e, "abgebrochen");
+  }, true);
+
+  function laenge(s) {
+    var l = 0;
+    for (var i = 1; i < s.p.length; i++) {
+      var dx = s.p[i].x - s.p[i - 1].x, dy = s.p[i].y - s.p[i - 1].y;
+      l += Math.sqrt(dx * dx + dy * dy);
+    }
+    return Math.round(l);
+  }
+
+  function zeige() {
+    document.getElementById("kT").textContent = z.touch;
+    document.getElementById("kP").textContent = z.pointer;
+    document.getElementById("kS").textContent = z.striche;
+    document.getElementById("kC").textContent = z.touchCancel + z.pointerCancel;
+    urteilen();
+  }
+
+  function urteilen() {
+    var t = "";
+    if (z.touch > z.pointer) {
+      t += "<span class='schlecht'>" + (z.touch - z.pointer) +
+        " Berührung(en) wurden nicht zu einem Zeiger.</span> Safari hat sie verschluckt – " +
+        "typischerweise eine Systemgeste (Kritzeln, Doppeltipp-Zoom).<br>";
+    } else if (z.touch === z.pointer) {
+      t += "<span class='gut'>Jede Berührung wurde zu einem Zeiger.</span><br>";
+    }
+    if (z.pointer > z.striche) {
+      t += "<span class='schlecht'>" + (z.pointer - z.striche) +
+        " Zeiger landeten nicht auf der Fläche</span> – sie gingen an ein Element daneben.<br>";
+    }
+    t += "Schreibe fünf Brüche: Erwartet werden <b>15</b> Berührungen, 15 Zeiger, 15 Striche. " +
+      "Fehlen schon Berührungen, fängt das iPad den Stift ab, bevor die Seite ihn sieht – " +
+      "dann hilft nur eine Einstellung am Gerät.";
+    document.getElementById("urteil").innerHTML = t;
+  }
+
+  document.getElementById("leeren").addEventListener("click", function () {
+    z = { touch: 0, touchEnde: 0, touchCancel: 0, pointer: 0, pointerUp: 0,
+          pointerCancel: 0, striche: 0 };
+    striche = []; zeilen = []; t0 = 0;
+    document.getElementById("log").textContent = "(noch nichts)";
+    document.getElementById("urteil").textContent = "Noch nichts aufgezeichnet.";
+    alles(); zeige();
+  });
+
+  document.getElementById("kopieren").addEventListener("click", function () {
+    var kopf = ["Schreibtest 4",
+      "Browser: " + navigator.userAgent,
+      "Bildschirm: " + window.innerWidth + "x" + window.innerHeight +
+        " @" + (window.devicePixelRatio || 1) + "x",
+      "",
+      "Berührungen (touchstart): " + z.touch + "   abgebrochen: " + z.touchCancel,
+      "Zeiger (pointerdown):     " + z.pointer + "   abgebrochen: " + z.pointerCancel,
+      "Striche auf der Fläche:   " + z.striche,
+      "", "Striche:"];
+    striche.forEach(function (s, i) {
+      kopf.push("  " + (i + 1) + ". " + (s.dauer || 0) + " ms, " + s.p.length + " Punkte, " +
+        (s.laenge || 0) + " px, " + s.ende);
+    });
+    kopf.push("", "Protokoll:", zeilen.join("\n"));
+    var text = kopf.join("\n");
+    var fertig = function () {
+      var b = document.getElementById("kopieren");
+      var alt = b.textContent; b.textContent = "Kopiert ✓";
+      setTimeout(function () { b.textContent = alt; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(fertig, function () { ersatz(text, fertig); });
+    } else { ersatz(text, fertig); }
+  });
+
+  function ersatz(text, fertig) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0";
+    ta.style.width = "100%"; ta.style.height = "40vh";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); fertig(); } catch (e) {}
+    setTimeout(function () { ta.remove(); }, 200);
+  }
+
+  groesse(); zeige();
+})();
+</script>
+</body>
+</html>
