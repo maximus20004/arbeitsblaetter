@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zufallsgeräte 10c</title>
+<style>
+/* Schüler-Tablet: oben drei Reiter (Würfel, Legostein, Münzen), Mitte das Gerät zum Antippen, unten die automatische Strichliste. */
+:root{
+  --bg:#f5f6f1; --card:#fff; --ink:#1d2433; --muted:#5d6678; --line:#d9dccf; --accent:#1f4e9c; --soft:#e8eef8;
+  --a:#2f6fd0; --b:#e0742b; --c:#2e9e6a; --d:#9b4dca; --lego:#d6352f; --lego-dark:#a8231f; --gold:#c9a227; --copper:#b8693a;
+  --font:"Segoe UI",system-ui,-apple-system,sans-serif; color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px}
+.wrap{max-width:900px;margin:0 auto;padding-block:12px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+button{font:600 17px var(--font);min-height:48px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;padding:8px 12px}
+nav button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:focus-visible{outline:3px solid var(--d);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+h1{font-size:22px;margin:0}
+.rule{color:var(--muted);margin:0;line-height:1.45}
+.stage{min-height:230px;border-radius:16px;background:radial-gradient(ellipse at 50% 80%,#e9ecdf,#f8f9f4 70%);display:flex;align-items:center;justify-content:center;gap:28px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;position:relative}
+.result{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-weight:700;font-size:20px;min-height:26px}
+.hint{position:absolute;top:10px;left:0;right:0;text-align:center;color:var(--muted);font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row button{flex:1 1 140px}
+.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{font-size:14px;color:var(--muted);font-weight:600}
+td b{font-size:20px}
+.tally{font-family:Consolas,monospace;letter-spacing:1px;color:var(--muted);font-size:14px;text-align:left!important;word-break:break-all}
+tfoot td{font-weight:700;border-bottom:0}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+/* Würfel */
+.die{width:96px;height:96px;background:#fff;border:3px solid #1d2433;border-radius:18px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:12px;box-shadow:0 8px 16px rgba(0,0,0,.18)}
+.die.red{background:#fde8e6;border-color:#a8231f}
+.die i{width:18px;height:18px;border-radius:50%;background:#1d2433;place-self:center;visibility:hidden}
+.die i.on{visibility:visible}
+.rolling{animation:roll .45s linear}
+@keyframes roll{0%{transform:rotate(0) translateY(0)}30%{transform:rotate(140deg) translateY(-30px)}60%{transform:rotate(260deg) translateY(4px)}100%{transform:rotate(360deg) translateY(0)}}
+/* Legostein */
+.lego{width:220px;height:150px;display:grid;place-items:center}
+.lego svg{max-width:100%;height:auto}
+.tumble{animation:tumble .7s cubic-bezier(.3,.7,.4,1)}
+@keyframes tumble{0%{transform:translateY(-60px) rotate(0)}40%{transform:translateY(-20px) rotate(300deg) scale(.9)}70%{transform:translateY(6px) rotate(520deg)}100%{transform:translateY(0) rotate(720deg)}}
+/* Münzen */
+.coin{width:110px;height:110px;border-radius:50%;display:grid;place-items:center;text-align:center;font-weight:800;color:#3a2a10;border:5px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 4px rgba(255,255,255,.35),0 8px 16px rgba(0,0,0,.18)}
+.coin.c1{background:radial-gradient(circle at 35% 30%,#e9a77c,var(--copper))}
+.coin.c2{background:radial-gradient(circle at 35% 30%,#efc28f,#a85e30)}
+.coin b{display:block;font-size:40px;line-height:1}
+.coin small{display:block;font-size:12px;font-weight:600}
+.flip{animation:flip .55s linear}
+@keyframes flip{0%{transform:translateY(0) scaleY(1)}25%{transform:translateY(-50px) scaleY(.1)}50%{transform:translateY(-70px) scaleY(1)}75%{transform:translateY(-30px) scaleY(.1)}100%{transform:translateY(0) scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.rolling,.tumble,.flip{animation:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav role="tablist">
+    <button id="t-wuerfel" role="tab" aria-selected="true" data-v="wuerfel">Zwei Würfel</button>
+    <button id="t-lego" role="tab" aria-selected="false" data-v="lego">Legostein</button>
+    <button id="t-muenzen" role="tab" aria-selected="false" data-v="muenzen">Zwei Münzen</button>
+  </nav>
+
+  <section class="card" id="v-wuerfel">
+    <h1>Lena gegen Tim</h1>
+    <p class="rule">Augensumme 7: Punkt für Lena. Pasch: Punkt für Tim. Sonst kein Punkt.</p>
+    <div class="stage" id="s-wuerfel" role="button" tabindex="0" aria-label="Würfeln">
+      <span class="hint">Tippe zum Würfeln</span>
+      <div class="die" id="d1"></div><div class="die red" id="d2"></div>
+      <div class="result" id="r-wuerfel" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="card" id="v-lego" hidden>
+    <h1>Wie landet der Legostein?</h1>
+    <p class="rule">Der digitale Stein verhält sich ähnlich wie ein echter 2 × 4-Stein: Die vier Lagen sind nicht gleich wahrscheinlich.</p>
+    <div class="stage" id="s-lego" role="button" tabindex="0" aria-label="Legostein werfen">
+      <span class="hint">Tippe zum Werfen</span>
+      <div class="lego" id="lego"></div>
+      <div class="result" id="r-lego" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="card" id="v-muenzen" hidden>
+    <h1>Zwei Münzen gleichzeitig</h1>
+    <p class="rule">Z = Zahl, W = Wappen. Gezählt wird: zweimal Zahl, Zahl und Wappen, zweimal Wappen.</p>
+    <div class="stage" id="s-muenzen" role="button" tabindex="0" aria-label="Münzen werfen">
+      <span class="hint">Tippe zum Werfen</span>
+      <div class="coin c1" id="m1"></div><div class="coin c2" id="m2"></div>
+      <div class="result" id="r-muenzen" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <button id="plus10" type="button">10 Würfe auf einmal</button>
+      <button id="plus100" type="button">100 Würfe auf einmal</button>
+      <button id="reset" type="button">Strichliste leeren</button>
+    </div>
+    <table>
+      <thead><tr><th>Ergebnis</th><th></th><th>Anzahl</th><th>rel. Häufigkeit</th></tr></thead>
+      <tbody id="tb"></tbody>
+      <tfoot><tr><td>Summe</td><td></td><td id="tot">0</td><td></td></tr></tfoot>
+    </table>
+  </section>
+</div>
+<script>
+(function(){
+  const buf=new Uint32Array(1);
+  const rnd=()=>{try{crypto.getRandomValues(buf);return buf[0]/4294967296}catch(e){return Math.random()}};
+  const ri=n=>Math.floor(rnd()*n);
+  const pct=x=>(x*100).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COL=['var(--a)','var(--b)','var(--c)','var(--d)'];
+
+  /* Hinterlegte Wahrscheinlichkeiten des digitalen Legosteins (Schätzwerte, nicht gemessen):
+     Noppen oben 0,24 · Noppen unten 0,08 · lange Seite 0,53 · kurze Seite 0,15 */
+  const LEGO=[['Noppen oben',.24],['Noppen unten',.08],['lange Seite',.53],['kurze Seite',.15]];
+
+  const MODES={
+    wuerfel:{cats:['Lena (Summe 7)','Tim (Pasch)','kein Punkt'],throw(){const a=ri(6)+1,b=ri(6)+1;return{v:[a,b],c:a+b===7?0:(a===b?1:2)}},
+      show(r){face('d1',r.v[0]);face('d2',r.v[1]);return `${r.v[0]} + ${r.v[1]} = ${r.v[0]+r.v[1]} · ${['Punkt für Lena','Punkt für Tim','kein Punkt'][r.c]}`},
+      anim(){['d1','d2'].forEach(id=>restart(id,'rolling'))}},
+    lego:{cats:LEGO.map(l=>l[0]),throw(){let x=rnd(),i=0;for(;i<LEGO.length-1;i++){if(x<LEGO[i][1])break;x-=LEGO[i][1]}return{c:i}},
+      show(r){document.getElementById('lego').innerHTML=brick(r.c);return LEGO[r.c][0]},anim(){restart('lego','tumble')}},
+    muenzen:{cats:['zweimal Zahl','Zahl und Wappen','zweimal Wappen'],throw(){const a=ri(2),b=ri(2);return{v:[a,b],c:a+b}},
+      show(r){coin('m1',r.v[0],'1 Cent');coin('m2',r.v[1],'2 Cent');return `${r.v[0]?'W':'Z'} und ${r.v[1]?'W':'Z'} · ${this.cats[r.c]}`},
+      anim(){['m1','m2'].forEach(id=>restart(id,'flip'))}}
+  };
+  const counts={wuerfel:[0,0,0],lego:[0,0,0,0],muenzen:[0,0,0]};
+  let mode='wuerfel', busy=false;
+
+  function restart(id,cls){const e=document.getElementById(id);e.classList.remove(cls);void e.offsetWidth;e.classList.add(cls)}
+  const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+  function face(id,n){const d=document.getElementById(id);d.innerHTML=Array.from({length:9},(_,i)=>`<i class="${PIPS[n].includes(i)?'on':''}"></i>`).join('');d.setAttribute('aria-label','Augenzahl '+n)}
+  function coin(id,w,lab){document.getElementById(id).innerHTML=`<div><b>${w?'W':'Z'}</b><small>${w?'Wappen':'Zahl'} · ${lab}</small></div>`}
+  function brick(c){
+    const R='var(--lego)',D='var(--lego-dark)';
+    if(c===0){let s='';for(let r=0;r<2;r++)for(let k=0;k<4;k++)s+=`<circle cx="${40+k*46}" cy="${40+r*46}" r="15" fill="${R}" stroke="${D}" stroke-width="3"/>`;
+      return `<svg viewBox="0 0 220 130" width="220"><rect x="10" y="10" width="200" height="106" rx="8" fill="${R}" stroke="${D}" stroke-width="4"/>${s}</svg>`}
+    if(c===1){let s='';for(let k=0;k<3;k++)s+=`<circle cx="${63+k*46}" cy="63" r="17" fill="#fff0ee" stroke="${D}" stroke-width="5"/>`;
+      return `<svg viewBox="0 0 220 130" width="220"><rect x="10" y="10" width="200" height="106" rx="8" fill="${D}"/><rect x="20" y="20" width="180" height="86" rx="4" fill="#7d1714"/>${s}</svg>`}
+    if(c===2){let s='';for(let k=0;k<4;k++)s+=`<rect x="${26+k*46}" y="22" width="30" height="14" rx="3" fill="${R}" stroke="${D}" stroke-width="3"/>`;
+      return `<svg viewBox="0 0 220 130" width="220">${s}<rect x="10" y="34" width="200" height="80" rx="6" fill="${R}" stroke="${D}" stroke-width="4"/></svg>`}
+    let s='';for(let k=0;k<2;k++)s+=`<rect x="${70+k*46}" y="22" width="30" height="14" rx="3" fill="${R}" stroke="${D}" stroke-width="3"/>`;
+    return `<svg viewBox="0 0 220 130" width="220">${s}<rect x="60" y="34" width="100" height="80" rx="6" fill="${R}" stroke="${D}" stroke-width="4"/></svg>`;
+  }
+  function tallyStr(n){if(n>60)return '';let s='';for(let i=0;i<Math.floor(n/5);i++)s+='<span style="text-decoration:line-through">||||</span> ';return s+'|'.repeat(n%5)}
+  function render(){
+    const m=MODES[mode],c=counts[mode],N=c.reduce((a,b)=>a+b,0);
+    document.getElementById('tb').innerHTML=m.cats.map((cat,i)=>`<tr><td><span class="dot" style="background:${COL[i]}"></span>${cat}</td><td class="tally">${tallyStr(c[i])}</td><td><b>${c[i]}</b></td><td>${N?pct(c[i]/N):'–'}</td></tr>`).join('');
+    document.getElementById('tot').textContent=N;
+  }
+  function one(animate){
+    const m=MODES[mode];const r=m.throw();counts[mode][r.c]++;
+    if(animate){m.anim();setTimeout(()=>{document.getElementById('r-'+mode).textContent=m.show(r);render();busy=false},reduced?0:(mode==='lego'?650:450))}
+    else{document.getElementById('r-'+mode).textContent=m.show(r)}
+  }
+  function tap(){if(busy)return;busy=true;document.getElementById('r-'+mode).textContent='';one(true)}
+  ['wuerfel','lego','muenzen'].forEach(k=>{const s=document.getElementById('s-'+k);s.onclick=tap;s.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tap()}}});
+  document.getElementById('plus10').onclick=()=>{if(busy)return;for(let i=0;i<10;i++)one(false);render()};
+  document.getElementById('plus100').onclick=()=>{if(busy)return;for(let i=0;i<100;i++)one(false);render()};
+  document.getElementById('reset').onclick=function(){
+    if(this.dataset.armed){counts[mode]=counts[mode].map(()=>0);render();this.textContent='Strichliste leeren';delete this.dataset.armed;document.getElementById('r-'+mode).textContent=''}
+    else{this.dataset.armed=1;this.textContent='Wirklich leeren? Nochmal tippen';setTimeout(()=>{this.textContent='Strichliste leeren';delete this.dataset.armed},3000)}
+  };
+  function show(v){if(!MODES[v])v='wuerfel';mode=v;document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
+    ['wuerfel','lego','muenzen'].forEach(k=>document.getElementById('v-'+k).hidden=k!==v);render()}
+  document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{show(b.dataset.v);try{history.replaceState(null,'','#'+b.dataset.v)}catch(e){}});
+  window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+  face('d1',3);face('d2',4);document.getElementById('lego').innerHTML=brick(0);coin('m1',0,'1 Cent');coin('m2',1,'2 Cent');
+  let h='';try{h=location.hash.slice(1)}catch(e){}
+  show(h);
+})();
+</script>
+</body>
+</html>
