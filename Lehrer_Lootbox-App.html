@@ -1,0 +1,339 @@
+<title>Pixel Arena Lootbox</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;600;700&display=swap">
+<style>
+/* Layout: ein Spielbildschirm mit zwei Reitern (Shop für den Beamer, Simulation für die Tablets). Bewusst nur ein dunkles Arcade-Thema. */
+:root{
+  color-scheme:dark;
+  --night:#14112b; --panel:#221d45; --panel-2:#2d2760; --line:#463e8a;
+  --ink:#f3f0ff; --muted:#a69fd6;
+  --gold:#ffc53d; --gold-deep:#e08a00; --legend:#ffdf7a;
+  --common:#8fa3c7; --magenta:#ff4fa3; --cyan:#4fe3ff;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);font-size:17px;
+  background-image:radial-gradient(circle at 50% -10%,#3a2f8a 0,transparent 55%),
+  repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.018) 3px 4px);}
+.wrap{max-width:1100px;margin:0 auto;padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-size:clamp(22px,4vw,34px);letter-spacing:.02em;
+  background:linear-gradient(180deg,var(--legend),var(--gold-deep));-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 3px 0 rgba(0,0,0,.25)}
+.gems{font-weight:700;background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:6px 14px;
+  display:flex;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.gem{width:14px;height:14px;background:var(--cyan);transform:rotate(45deg);box-shadow:0 0 8px var(--cyan)}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{font:600 16px var(--body);color:var(--muted);background:transparent;border:2px solid var(--line);
+  border-radius:12px;padding:10px 16px;min-height:44px;cursor:pointer}
+nav button[aria-selected="true"]{color:var(--night);background:var(--gold);border-color:var(--gold)}
+button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+
+/* ---------- Shop ---------- */
+.ad{position:relative;overflow:hidden;border-radius:18px;padding:18px 22px;
+  background:linear-gradient(110deg,var(--magenta),#7b3cff 55%,var(--panel-2));border:3px solid var(--legend);
+  display:grid;grid-template-columns:1fr auto;gap:10px 20px;align-items:center}
+.ad::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 45%,transparent 60%);
+  transform:translateX(-100%);animation:shine 3.2s infinite}
+@keyframes shine{60%,100%{transform:translateX(100%)}}
+.ad-tag{font:700 13px var(--body);letter-spacing:.12em;text-transform:uppercase;background:var(--night);color:var(--legend);
+  padding:4px 10px;border-radius:6px;justify-self:start}
+.ad h2{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(24px,4.6vw,46px);line-height:1.05;text-wrap:balance}
+.ad h2 b{color:var(--legend);font-weight:400;display:inline-block;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+.timer{grid-row:1/3;grid-column:2;text-align:center;background:rgba(0,0,0,.35);border-radius:12px;padding:10px 14px}
+.timer small{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--legend)}
+.timer span{font:700 26px var(--body);font-variant-numeric:tabular-nums}
+.fine{grid-column:1/-1;font-size:15px;line-height:1.45;color:rgba(255,255,255,.88)}
+@media (max-width:620px){.ad{grid-template-columns:1fr}.timer{grid-row:auto;grid-column:auto}}
+
+.stage{position:relative;min-height:380px;border-radius:18px;background:radial-gradient(ellipse at 50% 70%,var(--panel-2),var(--panel) 70%);
+  border:2px solid var(--line);display:grid;place-items:center;overflow:hidden}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rays{position:absolute;width:760px;height:760px;max-width:none;border-radius:50%;opacity:0;
+  background:repeating-conic-gradient(from 0deg,rgba(255,223,122,.33) 0 9deg,transparent 9deg 22deg);
+  mask:radial-gradient(circle,#000 20%,transparent 65%);-webkit-mask:radial-gradient(circle,#000 20%,transparent 65%);transition:opacity .4s}
+.stage.legendary .rays{opacity:1;animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.chest{position:relative;width:200px;height:170px;cursor:pointer;z-index:2}
+.chest .body{position:absolute;bottom:0;left:0;right:0;height:105px;border-radius:10px 10px 16px 16px;
+  background:linear-gradient(180deg,#8a4fff,#5225b8);border:5px solid var(--gold);box-shadow:inset 0 -14px 0 rgba(0,0,0,.25),0 18px 30px rgba(0,0,0,.45)}
+.chest .lid{position:absolute;top:8px;left:-6px;right:-6px;height:70px;border-radius:40px 40px 8px 8px;
+  background:linear-gradient(180deg,#a874ff,#6a33d8);border:5px solid var(--gold);transform-origin:50% 100%;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.chest .band{position:absolute;left:50%;width:30px;margin-left:-15px;top:0;bottom:0;background:var(--gold);opacity:.9}
+.chest .lock{position:absolute;left:50%;top:62px;width:40px;height:44px;margin-left:-20px;border-radius:8px;background:var(--legend);
+  border:4px solid var(--gold-deep);z-index:3}
+.chest .lock::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;font:400 22px var(--display);color:var(--gold-deep)}
+.chest.shake{animation:shake .12s linear infinite}
+@keyframes shake{25%{transform:translate(-4px,1px) rotate(-3deg)}75%{transform:translate(4px,-1px) rotate(3deg)}}
+.chest.open .lid{transform:translateY(-40px) rotate(-28deg)}
+.chest.gone{transform:scale(.6);opacity:0;transition:.25s}
+.hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:var(--muted);font-size:14px}
+
+.card{position:absolute;z-index:3;width:190px;height:250px;border-radius:16px;display:grid;place-items:center;text-align:center;
+  padding:16px;transform:scale(.2) rotateY(90deg);opacity:0;transition:transform .5s cubic-bezier(.2,1.5,.4,1),opacity .2s}
+.card.show{transform:scale(1) rotateY(0);opacity:1}
+.card.L{background:linear-gradient(160deg,var(--legend),var(--gold-deep));color:#3a2200;box-shadow:0 0 50px var(--gold),0 0 0 5px #fff6}
+.card.N{background:linear-gradient(160deg,#b8c5dd,#5d6f91);color:#16203a;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.card .rar{font:400 22px var(--display);letter-spacing:.02em}
+.card .item{font-weight:700;font-size:17px}
+.card .icon{width:84px;height:84px;margin:6px auto;border-radius:50%;background:rgba(255,255,255,.35);display:grid;place-items:center}
+.card .icon i{display:block;width:40px;height:40px;background:currentColor;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.card.N .icon i{clip-path:circle(40%)}
+
+.controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{font:400 18px var(--display);letter-spacing:.02em;color:var(--night);background:linear-gradient(180deg,var(--legend),var(--gold));
+  border:0;border-bottom:5px solid var(--gold-deep);border-radius:14px;padding:12px 20px;min-height:52px;cursor:pointer}
+.btn:active{transform:translateY(3px);border-bottom-width:2px}
+.btn.alt{background:linear-gradient(180deg,#8ee9ff,var(--cyan));border-bottom-color:#1a93b0}
+.btn.ghost{font-family:var(--body);font-weight:700;color:var(--ink);background:var(--panel);border:2px solid var(--line)}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn small{font:600 13px var(--body);display:block;opacity:.8}
+
+.log{display:flex;flex-direction:column;gap:8px}
+.log h3,.panel h3{margin:0;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pairs{display:flex;gap:8px;flex-wrap:wrap;min-height:40px}
+.pair{display:flex;gap:3px;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:4px}
+.chip{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font:700 15px var(--body)}
+.chip.L{background:var(--gold);color:#3a2200}.chip.N{background:var(--common);color:#16203a}
+.empty{color:var(--muted);font-size:14px;align-self:center}
+
+/* ---------- Simulation ---------- */
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.big .num{font:400 clamp(40px,7vw,64px) var(--display);color:var(--legend);font-variant-numeric:tabular-nums}
+.big .lbl{color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tfoot td{font-weight:700;border-bottom:0}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:56px 1fr 74px;gap:10px;align-items:center;font-variant-numeric:tabular-nums}
+.track{height:26px;background:var(--night);border-radius:8px;overflow:hidden}
+.fill{height:100%;width:0;border-radius:8px;transition:width .35s}
+.fill.LL{background:var(--gold)}.fill.LN,.fill.NL{background:linear-gradient(90deg,var(--gold) 50%,var(--common) 50%)}.fill.NN{background:var(--common)}
+.toggle{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--muted);cursor:pointer;min-height:44px}
+.toggle input{width:22px;height:22px;accent-color:var(--gold)}
+.note{font-size:14px;color:var(--muted);margin:0}
+
+.fine-wrap{display:flex;flex-direction:column;gap:16px}
+.step{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.step h3{margin:0;font:400 clamp(20px,3vw,28px) var(--display);color:var(--legend)}
+.step p{margin:0;line-height:1.5;font-size:18px}
+.reveal{font:700 clamp(20px,3vw,30px) var(--body);color:var(--ink)}
+.reveal[hidden]{display:none}
+.games{width:100%;border-collapse:collapse;font-size:17px}
+.games td,.games th{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.games .res{font-weight:700;color:var(--legend)}
+.games button{min-height:44px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">PIXEL ARENA</div>
+    <div class="gems" aria-label="Guthaben"><span class="gem"></span><span id="gemCount">2.400</span> Gems</div>
+  </header>
+  <nav role="tablist">
+    <button role="tab" id="tab-shop" aria-selected="true" data-view="shop">Shop</button>
+    <button role="tab" id="tab-sim" aria-selected="false" data-view="sim">Simulation</button>
+  </nav>
+
+  <!-- SHOP -->
+  <section id="view-shop" class="view">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="ad">
+        <span class="ad-tag">Nur für kurze Zeit</span>
+        <h2>MEGA-BOX: <b>30 %</b> Chance auf LEGENDÄR!</h2>
+        <div class="timer"><small>Angebot endet in</small><span id="timer">02:14:59</span></div>
+        <p class="fine">*Wahrscheinlichkeit für eine Box. Wurde in der vorherigen Box ein legendärer Gegenstand gefunden, beträgt die Chance für die nächste Box 20 %. Kein Anspruch auf einen bestimmten Gegenstand.</p>
+      </div>
+      <div class="stage" id="stage">
+        <div class="rays"></div>
+        <canvas id="fx"></canvas>
+        <div class="chest" id="chest" role="button" tabindex="0" aria-label="Box öffnen">
+          <div class="body"><div class="band"></div></div>
+          <div class="lid"><div class="band"></div></div>
+          <div class="lock"></div>
+        </div>
+        <div class="card" id="card" aria-live="polite"></div>
+        <div class="hint" id="hint">Tippe auf die Box</div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="open1">1 Box öffnen<small>100 Gems</small></button>
+        <button class="btn ghost" id="resetShop">Zurücksetzen</button>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMULATION -->
+  <section id="view-sim" class="view" hidden>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Zwei Boxen öffnen – ganz oft</h3>
+        <div class="controls" style="justify-content:flex-start">
+          <button class="btn" data-n="10">+10</button>
+          <button class="btn" data-n="100">+100</button>
+          <button class="btn alt" data-n="200">+200</button>
+          <button class="btn ghost" id="resetSim">Zurücksetzen</button>
+        </div>
+        <div class="big"><span class="num" id="pLL">–</span><span class="lbl">relative Häufigkeit von <b>LL</b> (zweimal legendär)</span></div>
+        <div class="bars" id="bars"></div>
+      </div>
+      <div class="panel">
+        <h3>Ergebnisse</h3>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Ergebnis</th><th>Anzahl</th><th>relative Häufigkeit</th></tr></thead>
+            <tbody id="tbody"></tbody>
+            <tfoot><tr><td>Summe</td><td id="total">0</td><td id="totalRel">–</td></tr></tfoot>
+          </table>
+        </div>
+        <p class="note">L = legendär, N = nicht legendär. Die erste Stelle steht für die 1. Box, die zweite für die 2. Box.</p>
+      </div>
+    </div>
+  </section>
+
+
+</div>
+
+<script>
+(function(){
+  const fmt = (x, d=1) => (x*100).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d}) + ' %';
+  const nf = n => n.toLocaleString('de-DE');
+  const buf = new Uint32Array(1);
+  const rnd = () => { try { crypto.getRandomValues(buf); return buf[0] / 4294967296; } catch(e) { return Math.random(); } };
+  const P1 = 0.3, P_NACH_L = 0.2;  // 1. Box 30 %; nach legendär nur noch 20 %
+
+  /* ---------- Tabs (mit #shop / #sim verlinkbar) ---------- */
+  const tabs = document.querySelectorAll('nav button');
+  function show(v){
+    if(!['shop','sim'].includes(v)) v='shop';
+    tabs.forEach(b => b.setAttribute('aria-selected', b.dataset.view===v));
+    document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-'+v);
+    if(v==='shop') sizeFx();
+  }
+  tabs.forEach(b => b.addEventListener('click', () => { show(b.dataset.view); try { history.replaceState(null, '', '#' + b.dataset.view); } catch (e) {} }));
+  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+  /* ---------- Countdown im Werbebanner ---------- */
+  let left = 2*3600 + 14*60 + 59;
+  const timer = document.getElementById('timer');
+  setInterval(() => { left = left>0 ? left-1 : 2*3600+14*60+59;
+    const h=Math.floor(left/3600), m=Math.floor(left%3600/60), s=left%60;
+    timer.textContent = [h,m,s].map(x=>String(x).padStart(2,'0')).join(':'); }, 1000);
+
+  /* ---------- Partikel ---------- */
+  const fx = document.getElementById('fx'), ctx = fx.getContext('2d'), stage = document.getElementById('stage');
+  let parts = [], raf = null;
+  function sizeFx(){ const r = stage.getBoundingClientRect(); fx.width = r.width*devicePixelRatio; fx.height = r.height*devicePixelRatio; }
+  window.addEventListener('resize', sizeFx); sizeFx();
+  function burst(gold){
+    const cx = fx.width/2, cy = fx.height/2, n = gold ? 140 : 40;
+    for(let i=0;i<n;i++){ const a = rnd()*Math.PI*2, v = (gold?6:3.5)*(0.4+rnd())*devicePixelRatio;
+      parts.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,life:1,r:(gold?4:3)*(0.5+rnd())*devicePixelRatio,
+        c: gold ? (rnd()<.5?'#ffc53d':'#fff3c4') : (rnd()<.5?'#8fa3c7':'#d7def0')}); }
+    if(!raf) loop();
+  }
+  function loop(){
+    ctx.clearRect(0,0,fx.width,fx.height);
+    parts = parts.filter(p => p.life>0);
+    for(const p of parts){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.12*devicePixelRatio; p.life-=0.012;
+      ctx.globalAlpha=Math.max(p.life,0); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+    ctx.globalAlpha=1;
+    raf = parts.length ? requestAnimationFrame(loop) : null;
+  }
+
+  /* ---------- Box öffnen ---------- */
+  const chest = document.getElementById('chest'), card = document.getElementById('card'), hint = document.getElementById('hint');
+  const btns = [document.getElementById('open1')];
+  const gemEl = document.getElementById('gemCount'); let gems = 2400;
+  const LEG = ['Drachenflügel','Sternenklinge','Phönix-Skin','Goldene Krone'], COM = ['Holzschild','Graue Mütze','Kieselstein','Alte Socke','Blaue Farbe'];
+  let busy = false;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  async function openOne(label, p){
+    const isL = rnd() < p;
+    card.className = 'card'; stage.classList.remove('legendary');
+    chest.className = 'chest shake'; hint.textContent = label;
+    await wait(reduced ? 50 : (isL ? 1500 : 1000));
+    chest.className = 'chest open'; await wait(reduced?0:250);
+    chest.className = 'chest open gone';
+    const name = isL ? LEG[Math.floor(rnd()*LEG.length)] : COM[Math.floor(rnd()*COM.length)];
+    card.className = 'card ' + (isL?'L':'N');
+    card.innerHTML = `<div><div class="rar">${isL?'LEGENDÄR':'GEWÖHNLICH'}</div><div class="icon"><i></i></div><div class="item">${name}</div></div>`;
+    requestAnimationFrame(() => card.classList.add('show'));
+    if(isL) stage.classList.add('legendary');
+    burst(isL);
+    await wait(isL ? 2200 : 1500);
+    return isL ? 'L' : 'N';
+  }
+  function resetChest(){ card.className='card'; stage.classList.remove('legendary'); chest.className='chest'; }
+
+  // Einzelne Box; das Ergebnis der vorigen Box bestimmt die Chance (nach legendär nur 20 %).
+  let vorige = 'N';
+  async function buy(){
+    if(busy) return; busy = true; btns.forEach(b=>b.disabled=true);
+    gems = Math.max(0, gems - 100); gemEl.textContent = nf(gems);
+    const r = await openOne('Box wird geöffnet …', vorige==='L' ? P_NACH_L : P1);
+    vorige = r;
+    hint.textContent = r==='L' ? 'Legendär!' : 'Leider nur gewöhnlich.';
+    await wait(600); resetChest();
+    busy = false; btns.forEach(b=>b.disabled=false);
+  }
+  btns[0].addEventListener('click', () => buy());
+  chest.addEventListener('click', () => buy());
+  chest.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); buy();} });
+  document.getElementById('resetShop').addEventListener('click', () => {
+    vorige = 'N'; gems = 2400; gemEl.textContent = nf(gems); hint.textContent='Tippe auf die Box'; });
+
+  /* ---------- Simulation ---------- */
+  const KEYS = ['LL','LN','NL','NN'];
+  let cnt = {LL:0,LN:0,NL:0,NN:0};
+  const tbody = document.getElementById('tbody'), bars = document.getElementById('bars');
+  tbody.innerHTML = KEYS.map(k=>`<tr><td><span class="chip ${k[0]}" style="display:inline-grid">${k[0]}</span> <span class="chip ${k[1]}" style="display:inline-grid">${k[1]}</span></td><td id="c-${k}">0</td><td id="r-${k}">–</td></tr>`).join('');
+  bars.innerHTML = KEYS.map(k=>`<div class="bar"><b>${k}</b><div class="track"><div class="fill ${k}" id="f-${k}"></div></div><span id="b-${k}">–</span></div>`).join('');
+  function simulate(n){
+    for(let i=0;i<n;i++){
+      const a = rnd() < P1 ? 'L' : 'N';
+      const p2 = a==='L' ? P_NACH_L : P1;
+      const b = rnd() < p2 ? 'L' : 'N';
+      cnt[a+b]++;
+    }
+    render();
+  }
+  function render(){
+    const tot = KEYS.reduce((s,k)=>s+cnt[k],0);
+    KEYS.forEach(k=>{
+      const r = tot ? cnt[k]/tot : 0;
+      document.getElementById('c-'+k).textContent = nf(cnt[k]);
+      document.getElementById('r-'+k).textContent = tot ? fmt(r) : '–';
+      document.getElementById('b-'+k).textContent = tot ? fmt(r) : '–';
+      document.getElementById('f-'+k).style.width = (r*100)+'%';
+    });
+    document.getElementById('total').textContent = nf(tot);
+    document.getElementById('totalRel').textContent = tot ? '100,0 %' : '–';
+    document.getElementById('pLL').textContent = tot ? fmt(cnt.LL/tot) : '–';
+  }
+  document.querySelectorAll('[data-n]').forEach(b => b.addEventListener('click', () => simulate(+b.dataset.n)));
+  function resetSim(){ cnt = {LL:0,LN:0,NL:0,NN:0}; render(); }
+  document.getElementById('resetSim').addEventListener('click', resetSim);
+  render();
+
+  /* ---------- Urne ---------- */
+
+  let h0 = ''; try { h0 = location.hash.slice(1); } catch (e) {}
+  show(h0);
+})();
+</script>
